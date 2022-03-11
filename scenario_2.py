@@ -1,3 +1,5 @@
+from data import Warehouse, Customer
+
 # Change the service distance (in km) you'd like to select.
 
 high_service_dist = 600
@@ -265,10 +267,28 @@ distance = {(15, 1): 3660.0, (15, 2): 1655.0, (15, 3): 363.0, (15, 4): 2623.0, (
 
 
 # Accounting for circuity factor
-distance = {(w,c): distance[w,c]*1.17 for w in warehouses for c in customers}
-
-# Setting the value to be 1 if customer c is within the given high service distance of warehouse w
-high_service_dist_par = {(w,c): 1 if distance[w,c] <= high_service_dist else 0 for w in warehouses for c in customers}  
+distance = {(w, c): distance[w, c] * 1.17 for w in warehouses.keys() for c in customers.keys()}
 
 # Setting the value to be 1 if customer c is within the given maximum service distance of warehouse w
 maximum_dist_par = {(w,c): 1 if distance[w,c] <= maximum_dist else 0 for w in warehouses for c in customers}
+
+
+# Convert data using standard nametuple
+
+for k, value in warehouses.items():
+    warehouses[k] = Warehouse(name=value[0],
+                              city=value[1],
+                              state=value[2],
+                              latitude=value[3],
+                              longitude=value[4],
+                              zipcode=None)
+
+for k, value in customers.items():
+    customers[k] = Customer(name=value[0],
+                            city=value[1],
+                            state=value[2],
+                            latitude=value[3],
+                            longitude=value[4],
+                            demand=customer_demands[k],
+                            zipcode=None)
+
