@@ -27,7 +27,6 @@ def print_dict(data):
 def optimal_location(num_warehouses=1,
                      warehouses=None,
                      customers=None,
-                     customer_demands=None,
                      distance=None,
                      distance_ranges=None,
                      plot=False):
@@ -35,9 +34,9 @@ def optimal_location(num_warehouses=1,
 
 
     # check input
-    if not warehouses or not customers or not customers or not customer_demands or not distance:
+    if not warehouses or not customers  or not distance:
         print('At least one required parameter is missing')
-        print('REQUIRED PARAMETERS: warehouses, customers, customer_demands, distance')
+        print('REQUIRED PARAMETERS: warehouses, customers, distance')
         return None
     if not distance_ranges:
         distance_ranges = [0]
@@ -75,8 +74,8 @@ def optimal_location(num_warehouses=1,
                                                cat=pl.LpInteger)
     
     # define the objective function (sum of all production costs)
-    total_weighted_distance = pl.lpSum([customer_demands[c] * distance[w, c] * assignment_vars[w, c] 
-                                        for w in warehouses_id for c in customers_id]) / pl.lpSum([customer_demands[c] for c in customers_id])
+    total_weighted_distance = pl.lpSum([customers[c].demand * distance[w, c] * assignment_vars[w, c] 
+                                        for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
     
     # setting problem objective
     pb.setObjective(total_weighted_distance)  
@@ -121,7 +120,7 @@ def optimal_location(num_warehouses=1,
     total_outflow = 0.
     for w in active_warehouses:
         try:
-            outflow = sum([customer_demands[c] * assignment_vars[w, c].varValue for c in customers_id])
+            outflow = sum([customers[c].demand * assignment_vars[w, c].varValue for c in customers_id])
         except TypeError:
             outflow = 0
 
@@ -140,14 +139,14 @@ def optimal_location(num_warehouses=1,
     for (w, c) in assignment_vars.keys():
         if assignment_vars[(w, c)].varValue > 0:
             cust = {
-                'Warehouse':str(warehouses[w][1]+','+warehouses[w][2]),
-                'Customer':str(customers[c][1]+','+customers[c][2]),
-                'Customer Demand': customer_demands[c],
+                'Warehouse':str(warehouses[w].city+', ' + warehouses[w].state),
+                'Customer':str(customers[c].city+', ' + customers[c].state),
+                'Customer Demand': customers[c].demand,
                 'Distance': distance[w,c],
-                'Warehouse Latitude' : warehouses[w][4],
-                'Warehouse Longitude' : warehouses[w][5],
-                'Customers Latitude' : customers[c][4],
-                'Customers Longitude': customers[c][5]
+                'Warehouse Latitude' : warehouses[w].latitude,
+                'Warehouse Longitude' : warehouses[w].longitude,
+                'Customers Latitude' : customers[c].latitude,
+                'Customers Longitude': customers[c].longitude
             }
             customers_assignment.append(cust)
                   
@@ -173,20 +172,20 @@ def optimal_location(num_warehouses=1,
         # Plot flows
         for flow in flows:
             plt.plot(
-                    [warehouses[flow[0]][-1], customers[flow[1]][-1]],
-                    [warehouses[flow[0]][-2], customers[flow[1]][-2]],
+                    [warehouses[flow[0]].longitude, customers[flow[1]].longitude],
+                    [warehouses[flow[0]].latitude, customers[flow[1]].latitude],
                     color="k",
                     linestyle="-",
                     linewidth=0.3)
         
         # Plot customers
         for _, each in customers.items():
-            plt.plot(each[-1], each[-2], "*b", markersize=4)
+            plt.plot(each.longitude, each.latitude, "*b", markersize=4)
         
         # Plot active warehouses
         for k, each in warehouses.items():
             if k in active_warehouses:
-                plt.plot(each[-1], each[-2], "sr", markersize=4)
+                plt.plot(each.longitude, each.latitude, "sr", markersize=4)
 
         # Remove axes
         plt.gca().axes.get_xaxis().set_visible(False)
@@ -195,7 +194,7 @@ def optimal_location(num_warehouses=1,
     return {'objective_value': pl.value(pb.objective),
             'avg_weighted_distance': avg_weighted_distance,
             'active_warehouses_id': active_warehouses,
-            'active_warehouses_name': [warehouses[w][0] for w in active_warehouses],
+            'active_warehouses_name': [warehouses[w].name for w in active_warehouses],
             'most_distant_customer': df_cu['Distance'].max(),
             'demand_perc_by_ranges': demand_perc_by_ranges
             }
