@@ -233,6 +233,8 @@ def optimal_location_service_level(num_warehouses=3,
                                    high_service_distance=800,
                                    avg_service_distance=None,
                                    max_service_distance=None,
+                                   forced_open=None,
+                                   forced_closed=None,
                                    plot=True):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
         maximising the demand covered within <high_service_distance> 
@@ -329,6 +331,25 @@ def optimal_location_service_level(num_warehouses=3,
         for c in customers_id:
             assignment_vars[w, c].upBound = max_service_dist_par[w, c]
 
+    # Force open warehouses
+    if forced_open and isinstance(forced_open, list):
+        print(f'Forcing open warehouses: {forced_open}')
+        for w in forced_open:
+            try:
+                facility_status_vars[w].lowBound = 1
+            except KeyError:
+                print(f'Warehouse {w} does not exist')
+
+    # Force closed warehouses
+    if forced_closed and isinstance(forced_closed, list):
+        print(f'Forcing closed warehouses: {forced_closed}')
+        for w in forced_closed:
+            try:
+                facility_status_vars[w].upBound = 0
+            except KeyError:
+                print(f'Warehouse {w} does not exist')
+
+
     # The problem is solved using PuLP's choice of Solver
     _solver = pl.PULP_CBC_CMD(keepFiles=False,
                               gapRel=0.00,
@@ -363,7 +384,7 @@ def optimal_location_service_level(num_warehouses=3,
         except TypeError:
             assigned_customers = 0
 
-        print(f'City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11} units')
+        print(f'ID: {w:3} City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11} units')
     print()
     print(f'Total outflow: {total_outflow} units')
     
