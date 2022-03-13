@@ -186,10 +186,11 @@ def optimal_location(num_warehouses=1,
         perc_of_demand_in_band = sum(df_cu[df_cu['distance_range']== band]['Customer Demand']) / total_demand
         distance_range_lower_limit = distance_ranges[band-1]
         distance_range_upper_limit = distance_ranges[band]
-        print(f'% of demand in range {distance_range_lower_limit:5} - {distance_range_upper_limit:5}: {round(perc_of_demand_in_band * 100, 0):>3}')
+        print(f'% of demand in range {distance_range_lower_limit:5} - {distance_range_upper_limit:5}: {round(perc_of_demand_in_band * 100, 1):>3}')
         demand_perc_by_ranges[(distance_range_lower_limit, distance_range_upper_limit)] = perc_of_demand_in_band
 
     print(f"Most distant customer is at {df_cu['Distance'].max()}")
+    print(f"Average customers distance: {df_cu['Distance'].mean()}")
 
     if plot:
         plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
@@ -221,6 +222,7 @@ def optimal_location(num_warehouses=1,
             'active_warehouses_id': active_warehouses,
             'active_warehouses_name': [warehouses[w].name for w in active_warehouses],
             'most_distant_customer': df_cu['Distance'].max(),
+            'avg_customer_distance': df_cu['Distance'].mean(),
             'demand_perc_by_ranges': demand_perc_by_ranges
             }
 
@@ -417,10 +419,11 @@ def optimal_location_service_level(num_warehouses=3,
         perc_of_demand_in_band = sum(df_cu[df_cu['distance_range'] == band]['Customer Demand']) / total_demand
         distance_range_lower_limit = distance_ranges[band-1]
         distance_range_upper_limit = distance_ranges[band]
-        print(f'% of demand in range {distance_range_lower_limit:5} - {distance_range_upper_limit:5}: {round(perc_of_demand_in_band * 100, 0):>3}')
+        print(f'% of demand in range {distance_range_lower_limit:5} - {distance_range_upper_limit:5}: {round(perc_of_demand_in_band * 100, 1):>3}')
         demand_perc_by_ranges[(distance_range_lower_limit, distance_range_upper_limit)] = perc_of_demand_in_band
 
     print(f"Most distant customer is at {df_cu['Distance'].max()}")
+    print(f"Average customers distance: {df_cu['Distance'].mean()}")    
 
     df_cu['Weighted_Distance'] = df_cu['Distance'] * df_cu['Customer Demand']
     avg_weighted_distance = df_cu['Weighted_Distance'].sum() / df_cu['Customer Demand'].sum()
@@ -455,5 +458,6 @@ def optimal_location_service_level(num_warehouses=3,
             'active_warehouses_id': active_warehouses,
             'active_warehouses_name': [warehouses[w].name for w in active_warehouses],
             'most_distant_customer': df_cu['Distance'].max(),
-            'demand_perc_by_ranges': demand_perc_by_ranges
+            'demand_perc_by_ranges': demand_perc_by_ranges,
+            'avg_customer_distance': df_cu['Distance'].mean()
             }                                   
