@@ -29,6 +29,8 @@ def optimal_location(num_warehouses=1,
                      customers=None,
                      distance=None,
                      distance_ranges=None,
+                     forced_open=None,
+                     forced_closed=None,
                      plot=False):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses> (p-median problem) """
 
@@ -98,6 +100,26 @@ def optimal_location(num_warehouses=1,
                                   sense=pl.LpConstraintLE,
                                   rhs=0,
                                   name=f"Logical_constraint_between_customer_{c}_and_warehouse_{w}")
+    
+    # Force open warehouses
+    if forced_open and isinstance(forced_open, list):
+        print(f'Forcing open warehouses: {forced_open}')
+        for w in forced_open:
+            try:
+                facility_status_vars[w].lowBound = 1
+            except KeyError:
+                print(f'Warehouse {w} does not exist')
+
+    # Force closed warehouses
+    if forced_closed and isinstance(forced_closed, list):
+        print(f'Forcing closed warehouses: {forced_closed}')
+        for w in forced_closed:
+            try:
+                facility_status_vars[w].upBound = 0
+            except KeyError:
+                print(f'Warehouse {w} does not exist')
+
+
     # The problem is solved using PuLP's choice of Solver
     _solver = pl.PULP_CBC_CMD(keepFiles=False,
                               gapRel=0.00,
@@ -131,7 +153,7 @@ def optimal_location(num_warehouses=1,
         except TypeError:
             assigned_customers = 0
 
-        print(f'City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11} units')
+        print(f'ID: {w:3} City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11} units')
     print()
     print(f'Total outflow: {total_outflow} units')
     
@@ -139,8 +161,8 @@ def optimal_location(num_warehouses=1,
     for (w, c) in assignment_vars.keys():
         if assignment_vars[(w, c)].varValue > 0:
             cust = {
-                'Warehouse':str(warehouses[w].city+', ' + warehouses[w].state),
-                'Customer':str(customers[c].city+', ' + customers[c].state),
+                'Warehouse':str(warehouses[w].city) + ', ' + str(warehouses[w].state),
+                'Customer':str(customers[c].city) + ', ' + str(customers[c].state),
                 'Customer Demand': customers[c].demand,
                 'Distance': distance[w,c],
                 'Warehouse Latitude' : warehouses[w].latitude,
@@ -209,11 +231,14 @@ def optimal_location_service_level(num_warehouses=3,
                                    distance=None,
                                    distance_ranges=None,
                                    high_service_distance=800,
-                                   avg_service_distance=1000,
-                                   max_service_distance=1200,
+                                   avg_service_distance=None,
+                                   max_service_distance=None,
                                    plot=True):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
-        maximising the demand covered within <high_service_distance> """
+        maximising the demand covered within <high_service_distance> 
+        high_service_distance: distance range within which the demand covered must be maximized
+        avg_service_distance: largest average weighted distance tolerated
+        max_service_distance: all customers must have a warehouse within this distance"""
 
 
     # check input
@@ -229,6 +254,9 @@ def optimal_location_service_level(num_warehouses=3,
 
     if distance_ranges[-1] != 99999:
         distance_ranges.append(99999)
+
+    if not max_service_distance:
+        max_service_distance = 99999
 
 
     # check if values in distance_ranges are increasing
@@ -257,8 +285,11 @@ def optimal_location_service_level(num_warehouses=3,
                                                upBound=1,
                                                cat=pl.LpInteger)
     
-    # Setting the value to be 1 if customer c is within the given high service distance of warehouse w
+    # Setting the value to 1 if customer c is within the given high service distance of warehouse w
     high_service_dist_par = {(w, c): 1 if distance[w, c] <= high_service_distance else 0 for w in warehouses_id for c in customers_id}
+
+    # Setting the value to 1 if customer c is within the given max service distance of warehouse w
+    max_service_dist_par = {(w, c): 1 if distance[w, c] <= max_service_distance else 0 for w in warehouses_id for c in customers_id}
 
     # define the objective function (sum of all covered demand within <high_service_dist_par> distance)
     total_covered_demand_high_service = pl.lpSum([customers[c].demand * high_service_dist_par[w, c] * assignment_vars[w, c] 
@@ -293,6 +324,11 @@ def optimal_location_service_level(num_warehouses=3,
                               rhs=avg_service_distance,
                               name='Avoid_random_allocations' )
 
+    # Forbid assignment to warehouses farther than <max_service_distance>. This may lead to infeasibility
+    for w in warehouses_id:
+        for c in customers_id:
+            assignment_vars[w, c].upBound = max_service_dist_par[w, c]
+
     # The problem is solved using PuLP's choice of Solver
     _solver = pl.PULP_CBC_CMD(keepFiles=False,
                               gapRel=0.00,
@@ -310,7 +346,7 @@ def optimal_location_service_level(num_warehouses=3,
     active_warehouses = {w for w in warehouses_id if facility_status_vars[w].varValue == 1}
     
     perc_covered_demand_high_service = pl.value(pb.objective)
-    print(f'% covered demand within {high_service_distance} distance: {round(perc_covered_demand_high_service * 100, 0)}%')
+    print(f'% covered demand within {high_service_distance} distance: {round(perc_covered_demand_high_service * 100, 1)}%')
     print()
     print(f'Open warehouses:')
     total_outflow = 0.
@@ -335,8 +371,8 @@ def optimal_location_service_level(num_warehouses=3,
     for (w, c) in assignment_vars.keys():
         if assignment_vars[(w, c)].varValue > 0:
             cust = {
-                'Warehouse':str(warehouses[w].city+', ' + warehouses[w].state),
-                'Customer':str(customers[c].city+', ' + customers[c].state),
+                'Warehouse':str(warehouses[w].city) + ', ' + str(warehouses[w].state),
+                'Customer':str(customers[c].city) + ', ' + str(customers[c].state),
                 'Customer Demand': customers[c].demand,
                 'Distance': distance[w,c],
                 'Warehouse Latitude' : warehouses[w].latitude,

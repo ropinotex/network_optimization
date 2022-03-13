@@ -270,7 +270,7 @@ distance = {(15, 1): 3660.0, (15, 2): 1655.0, (15, 3): 363.0, (15, 4): 2623.0, (
 distance = {(w, c): distance[w, c] * 1.17 for w in warehouses.keys() for c in customers.keys()}
 
 # Setting the value to be 1 if customer c is within the given maximum service distance of warehouse w
-maximum_dist_par = {(w,c): 1 if distance[w,c] <= maximum_dist else 0 for w in warehouses for c in customers}
+maximum_dist_par = {(w,c): 1 if distance[w,c] <= maximum_dist else 0 for w in warehouses.keys() for c in customers.keys()}
 
 
 # Convert data using standard nametuple
