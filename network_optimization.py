@@ -190,7 +190,7 @@ def optimal_location(num_warehouses=1,
         demand_perc_by_ranges[(distance_range_lower_limit, distance_range_upper_limit)] = perc_of_demand_in_band
 
     print(f"Most distant customer is at {df_cu['Distance'].max()}")
-    print(f"Average customers distance: {df_cu['Distance'].mean()}")
+    print(f"Average customers distance (no weights): {df_cu['Distance'].mean()}")
 
     if plot:
         plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
@@ -206,7 +206,7 @@ def optimal_location(num_warehouses=1,
         
         # Plot customers
         for _, each in customers.items():
-            plt.plot(each.longitude, each.latitude, "*b", markersize=4)
+            plt.plot(each.longitude, each.latitude, "ob", markersize=3)
         
         # Plot active warehouses
         for k, each in warehouses.items():
@@ -298,7 +298,12 @@ def optimal_location_service_level(num_warehouses=3,
     # define the objective function (sum of all covered demand within <high_service_dist_par> distance)
     total_covered_demand_high_service = pl.lpSum([customers[c].demand * high_service_dist_par[w, c] * assignment_vars[w, c] 
                                                   for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
+
+    # define the objective function (sum of all production costs)
+    total_weighted_distance = pl.lpSum([customers[c].demand * distance[w, c] * assignment_vars[w, c] 
+                                        for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
     
+
     # setting problem objective
     pb.setObjective(total_covered_demand_high_service)  
     
@@ -423,7 +428,7 @@ def optimal_location_service_level(num_warehouses=3,
         demand_perc_by_ranges[(distance_range_lower_limit, distance_range_upper_limit)] = perc_of_demand_in_band
 
     print(f"Most distant customer is at {df_cu['Distance'].max()}")
-    print(f"Average customers distance: {df_cu['Distance'].mean()}")    
+    print(f"Average customers distance (no weights): {df_cu['Distance'].mean()}")    
 
     df_cu['Weighted_Distance'] = df_cu['Distance'] * df_cu['Customer Demand']
     avg_weighted_distance = df_cu['Weighted_Distance'].sum() / df_cu['Customer Demand'].sum()
@@ -442,7 +447,7 @@ def optimal_location_service_level(num_warehouses=3,
         
         # Plot customers
         for _, each in customers.items():
-            plt.plot(each.longitude, each.latitude, "*b", markersize=4)
+            plt.plot(each.longitude, each.latitude, "ob", markersize=3)
         
         # Plot active warehouses
         for k, each in warehouses.items():
@@ -460,4 +465,34 @@ def optimal_location_service_level(num_warehouses=3,
             'most_distant_customer': df_cu['Distance'].max(),
             'demand_perc_by_ranges': demand_perc_by_ranges,
             'avg_customer_distance': df_cu['Distance'].mean()
-            }                                   
+            }
+
+def plot(warehouses=None,
+         customers=None,
+         flows=None):
+
+    plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
+
+    # Plot flows
+    if flows:
+        for flow in flows:
+            plt.plot(
+                    [warehouses[flow[0]].longitude, customers[flow[1]].longitude],
+                    [warehouses[flow[0]].latitude, customers[flow[1]].latitude],
+                    color="k",
+                    linestyle="-",
+                    linewidth=0.3)
+    
+    # Plot customers
+    if customers:
+        for _, each in customers.items():
+            plt.plot(each.longitude, each.latitude, "ob", markersize=3)
+        
+    # Plot active warehouses
+    if warehouses:
+        for k, each in warehouses.items():
+            plt.plot(each.longitude, each.latitude, "sr", markersize=4)
+
+    # Remove axes
+    plt.gca().axes.get_xaxis().set_visible(False)
+    plt.gca().axes.get_yaxis().set_visible(False)
