@@ -1,5 +1,5 @@
 # Data
-from data import Warehouse, Customer
+from data_structures import Warehouse, Customer
 
 # Warehouse candidate locations
 # id: (name, city, State, Zipcode, latitude, longitude)

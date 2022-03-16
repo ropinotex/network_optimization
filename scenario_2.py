@@ -1,24 +1,4 @@
-from data import Warehouse, Customer
-
-# Change the service distance (in km) you'd like to select.
-
-high_service_dist = 600
-
-# Change the average service distance of all customers you'd like to select. This could come from objective value of second model.
-
-avg_service_dist = 1000
-
-# Maximum distance (in km) a customer can be served from a warehouse.
-
-maximum_dist = 5000
-
-# Quantity of demand to be serviced within the service distance. This could come from objective value of first model.
-
-high_service_demand = 131645389  #start with default of 500100100.  
-
-# Change the number of warehouses you would like to select.  This number should be an integer
-
-number_of_whs = 3  #<<<------ you can change this number
+from data_structures import Warehouse, Customer
 
 warehouses = {15: ('Changchun', 'Changchun', 'China', 43.87, 125.35),
 17: ('Changsha', 'Changsha', 'China', 28.2, 112.97),
