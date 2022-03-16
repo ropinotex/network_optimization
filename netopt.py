@@ -104,24 +104,24 @@ def netopt(num_warehouses=3,
                                                cat=pl.LpInteger)
     
     # Setting the value to 1 if customer c is within the given high service distance of warehouse w
-    high_service_dist_par = {(w, c): 1 if distance[w, c] <= high_service_distance else 0 for w in warehouses_id for c in customers_id}
+    if high_service_distance:
+        high_service_dist_par = {(w, c): 1 if distance[w, c] <= high_service_distance else 0 for w in warehouses_id for c in customers_id}
 
     # Setting the value to 1 if customer c is within the given max service distance of warehouse w
-    max_service_dist_par = {(w, c): 1 if distance[w, c] <= max_service_distance else 0 for w in warehouses_id for c in customers_id}
+    if max_service_distance:
+        max_service_dist_par = {(w, c): 1 if distance[w, c] <= max_service_distance else 0 for w in warehouses_id for c in customers_id}
 
-    # define the objective function (sum of all covered demand within <high_service_dist_par> distance)
-    total_covered_demand_high_service = pl.lpSum([customers[c].demand * high_service_dist_par[w, c] * assignment_vars[w, c] 
-                                                  for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
-
-    # define the objective function (sum of all production costs)
-    total_weighted_distance = pl.lpSum([customers[c].demand * distance[w, c] * assignment_vars[w, c] 
-                                        for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
-    
 
     # setting problem objective
     if objective == 'maxcover':
+        # define the objective function (sum of all covered demand within <high_service_dist_par> distance)
+        total_covered_demand_high_service = pl.lpSum([customers[c].demand * high_service_dist_par[w, c] * assignment_vars[w, c] 
+                                                      for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
         pb.setObjective(total_covered_demand_high_service)
     elif objective == 'mindistance':
+        # define the objective function (sum of all production costs)
+        total_weighted_distance = pl.lpSum([customers[c].demand * distance[w, c] * assignment_vars[w, c] 
+                                            for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
         pb.setObjective(total_weighted_distance)
     else:
         print(f'Objective {objective} not recognized')
