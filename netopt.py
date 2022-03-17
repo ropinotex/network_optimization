@@ -37,6 +37,7 @@ def netopt(num_warehouses=3,
            max_service_distance=None,
            forced_open=None,
            forced_closed=None,
+           force_single_sourcing=True,
            plot=True,
            solver_log=False):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
@@ -92,11 +93,19 @@ def netopt(num_warehouses=3,
     # define variables
 
     # Customers assignment to warehouses
-    assignment_vars = pl.LpVariable.dicts(name="Flow",
-                                          indices=[(w, c) for w in warehouses_id for c in customers_id],
-                                          lowBound=0,
-                                          upBound=1,
-                                          cat=pl.LpInteger)
+    if force_single_sourcing:
+        assignment_vars = pl.LpVariable.dicts(name="Flow",
+                                    indices=[(w, c) for w in warehouses_id for c in customers_id],
+                                    lowBound=0,
+                                    upBound=1,
+                                    cat=pl.LpInteger)
+
+    else:
+        assignment_vars = pl.LpVariable.dicts(name="Flow",
+                                            indices=[(w, c) for w in warehouses_id for c in customers_id],
+                                            lowBound=0.0,
+                                            upBound=1.0,
+                                            cat=pl.LpContinuous)
     # Open warehouses
     facility_status_vars = pl.LpVariable.dicts(name="Open",
                                                indices=[w for w in warehouses_id],
@@ -107,11 +116,14 @@ def netopt(num_warehouses=3,
     # Setting the value to 1 if customer c is within the given high service distance of warehouse w
     if high_service_distance:
         high_service_dist_par = {(w, c): 1 if distance[w, c] <= high_service_distance else 0 for w in warehouses_id for c in customers_id}
+    else:
+        high_service_dist_par = {(w, c): 1 for w in warehouses_id for c in customers_id}
 
     # Setting the value to 1 if customer c is within the given max service distance of warehouse w
     if max_service_distance:
         max_service_dist_par = {(w, c): 1 if distance[w, c] <= max_service_distance else 0 for w in warehouses_id for c in customers_id}
-
+    else:
+        max_service_dist_par = {(w, c): 1 for w in warehouses_id for c in customers_id}
 
     # setting problem objective
     if objective == 'maxcover':
@@ -132,8 +144,8 @@ def netopt(num_warehouses=3,
     for c in customers_id:
         pb += pl.LpConstraint(e = pl.lpSum([assignment_vars[w, c] for w in warehouses_id]), 
                               sense=pl.LpConstraintEQ, 
-                              name=f"Customer_{c}_Served", 
-                              rhs=1)
+                              rhs=1,
+                              name=f"Customer_{c}_Served")
 
     pb += pl.LpConstraint(e = pl.lpSum([facility_status_vars[w] for w in warehouses_id]),
                           sense=pl.LpConstraintEQ,
@@ -153,6 +165,14 @@ def netopt(num_warehouses=3,
                               sense=pl.LpConstraintLE,
                               rhs=avg_service_distance,
                               name='Avoid_random_allocations' )
+
+    # Add capacity limits to warehouses
+    for w_id, w in warehouses.items():
+        if w.capacity:
+            pb += pl.LpConstraint(e=pl.lpSum([customers[c].demand * assignment_vars[w_id, c] for c in customers_id]),
+                                  sense=pl.LpConstraintLE,
+                                  rhs=w.capacity,
+                                  name=f'Capacity_limit_warehouse_{w_id}')
 
     # Forbid assignment to warehouses farther than <max_service_distance>. This may lead to infeasibility
     for w in warehouses_id:
@@ -265,6 +285,20 @@ def netopt(num_warehouses=3,
     df_cu['Weighted_Distance'] = df_cu['Distance'] * df_cu['Customer Demand']
     avg_weighted_distance = df_cu['Weighted_Distance'].sum() / df_cu['Customer Demand'].sum()
 
+    # Check if there are customers served by more than one warehouse
+    multi_sourced = {}
+    for c in customers_id:
+        suppliers = sum([1 if assignment_vars[w, c].varValue > 0 else 0 for w in warehouses_id ])
+        if suppliers > 1:
+            multi_sourced[c] = suppliers
+
+    if multi_sourced:
+        print()
+        print('Customers served by more than one warehouse')
+        for k, v in multi_sourced.items():
+            print(f'- Customer {k} is served by {v} warehouses')
+        print()
+
     if plot:
         plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
 
@@ -278,8 +312,12 @@ def netopt(num_warehouses=3,
                     linewidth=0.3)
         
         # Plot customers
-        for _, each in customers.items():
-            plt.plot(each.longitude, each.latitude, "ob", markersize=3)
+        for c_id, each in customers.items():
+            # Highlight customers served by multiple suppliers
+            if c_id in multi_sourced:
+                plt.plot(each.longitude, each.latitude, "oy", markersize=5)
+            else:
+                plt.plot(each.longitude, each.latitude, "ob", markersize=3)
         
         # Plot active warehouses
         for k, each in warehouses.items():
@@ -296,7 +334,8 @@ def netopt(num_warehouses=3,
             'active_warehouses_name': [warehouses[w].name for w in active_warehouses],
             'most_distant_customer': df_cu['Distance'].max(),
             'demand_perc_by_ranges': demand_perc_by_ranges,
-            'avg_customer_distance': df_cu['Distance'].mean()
+            'avg_customer_distance': df_cu['Distance'].mean(),
+            'multi_sourced_customers': list(multi_sourced.keys())
             }
 
 def plot(warehouses=None,
