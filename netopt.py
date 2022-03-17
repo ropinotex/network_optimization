@@ -38,6 +38,7 @@ def netopt(num_warehouses=3,
            forced_open=None,
            forced_closed=None,
            force_single_sourcing=True,
+           force_uncapacitated=False,
            plot=True,
            solver_log=False):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
@@ -168,7 +169,7 @@ def netopt(num_warehouses=3,
 
     # Add capacity limits to warehouses
     for w_id, w in warehouses.items():
-        if w.capacity:
+        if w.capacity and not force_uncapacitated:
             pb += pl.LpConstraint(e=pl.lpSum([customers[c].demand * assignment_vars[w_id, c] for c in customers_id]),
                                   sense=pl.LpConstraintLE,
                                   rhs=w.capacity,
@@ -354,15 +355,16 @@ def plot(warehouses=None,
                     linestyle="-",
                     linewidth=0.3)
     
+    # Plot warehouses
+    if warehouses:
+        for k, each in warehouses.items():
+            plt.plot(each.longitude, each.latitude, "sr", markersize=4)
+
     # Plot customers
     if customers:
         for _, each in customers.items():
             plt.plot(each.longitude, each.latitude, "ob", markersize=3)
         
-    # Plot active warehouses
-    if warehouses:
-        for k, each in warehouses.items():
-            plt.plot(each.longitude, each.latitude, "sr", markersize=4)
 
     # Remove axes
     plt.gca().axes.get_xaxis().set_visible(False)
