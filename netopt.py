@@ -37,7 +37,8 @@ def netopt(num_warehouses=3,
            max_service_distance=None,
            forced_open=None,
            forced_closed=None,
-           plot=True):
+           plot=True,
+           solver_log=False):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
         The objective is defined by the <objective> parameter, which can be either "maxcover" or "mindistance".
         high_service_distance: distance range within which the demand covered must be maximized
@@ -183,7 +184,7 @@ def netopt(num_warehouses=3,
     _solver = pl.PULP_CBC_CMD(keepFiles=False,
                               gapRel=0.00,
                               timeLimit=120, 
-                              msg=True)
+                              msg=solver_log)
     pb.solve(solver=_solver)
     print('OK')
 
