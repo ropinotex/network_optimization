@@ -1,8 +1,8 @@
 # ==============================================================================
 # description     :Optimization models for teaching purposes
 # author          :Roberto Pinto
-# date            :2022.03.22
-# version         :1.0
+# date            :2022.03.19
+# version         :1.1
 # notes           :This software is meant for teaching purpose only and it is provided as-is under the GPL license.
 #                  The models are inspired by the book Watson, M., Lewis, S., Cacioppi, P., Jayaraman, J. (2013)
 #                  Supply Chain Network Design, Pearson. 
@@ -40,7 +40,9 @@ def netopt(num_warehouses=3,
            force_single_sourcing=True,
            force_uncapacitated=False,
            plot=True,
-           solver_log=False):
+           hide_inactive=False,
+           solver_log=False,
+           **kwargs):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
         The objective is defined by the <objective> parameter, which can be either "maxcover" or "mindistance".
         high_service_distance: distance range within which the demand covered must be maximized
@@ -301,33 +303,40 @@ def netopt(num_warehouses=3,
         print()
 
     if plot:
-        plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
+        plot_map(warehouses=warehouses,
+                 customers=customers,
+                 flows=flows,
+                 active_warehouses=active_warehouses,
+                 hide_inactive=hide_inactive,
+                 multi_sourced=multi_sourced,
+                 **kwargs)
+        # plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
 
-        # Plot flows
-        for flow in flows:
-            plt.plot(
-                    [warehouses[flow[0]].longitude, customers[flow[1]].longitude],
-                    [warehouses[flow[0]].latitude, customers[flow[1]].latitude],
-                    color="k",
-                    linestyle="-",
-                    linewidth=0.3)
+        # # Plot flows
+        # for flow in flows:
+        #     plt.plot(
+        #             [warehouses[flow[0]].longitude, customers[flow[1]].longitude],
+        #             [warehouses[flow[0]].latitude, customers[flow[1]].latitude],
+        #             color="k",
+        #             linestyle="-",
+        #             linewidth=0.3)
         
-        # Plot customers
-        for c_id, each in customers.items():
-            # Highlight customers served by multiple suppliers
-            if c_id in multi_sourced:
-                plt.plot(each.longitude, each.latitude, "oy", markersize=5)
-            else:
-                plt.plot(each.longitude, each.latitude, "ob", markersize=3)
+        # # Plot customers
+        # for c_id, each in customers.items():
+        #     # Highlight customers served by multiple suppliers
+        #     if c_id in multi_sourced:
+        #         plt.plot(each.longitude, each.latitude, "oy", markersize=5)
+        #     else:
+        #         plt.plot(each.longitude, each.latitude, "ob", markersize=kwargs.get('customer_markersize', 3))
         
-        # Plot active warehouses
-        for k, each in warehouses.items():
-            if k in active_warehouses:
-                plt.plot(each.longitude, each.latitude, "sr", markersize=4)
+        # # Plot active warehouses
+        # for k, each in warehouses.items():
+        #     if k in active_warehouses:
+        #         plt.plot(each.longitude, each.latitude, "sr", markersize=kwargs.get('warehouse_markersize', 4))
 
-        # Remove axes
-        plt.gca().axes.get_xaxis().set_visible(False)
-        plt.gca().axes.get_yaxis().set_visible(False)
+        # # Remove axes
+        # plt.gca().axes.get_xaxis().set_visible(False)
+        # plt.gca().axes.get_yaxis().set_visible(False)
 
     return {'objective_value': pl.value(pb.objective),
             'avg_weighted_distance': avg_weighted_distance,
@@ -339,9 +348,20 @@ def netopt(num_warehouses=3,
             'multi_sourced_customers': list(multi_sourced.keys())
             }
 
-def plot(warehouses=None,
-         customers=None,
-         flows=None):
+def plot_map(warehouses=None,
+             customers=None,
+             flows=None,
+             multi_sourced=None,
+             active_warehouses=None,
+             hide_inactive=False,
+             **kwargs):
+    """ Plot the network data """
+
+    if not multi_sourced:
+        multi_sourced = {}
+
+    if not active_warehouses:
+        active_warehouses = []
 
     plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
 
@@ -358,13 +378,36 @@ def plot(warehouses=None,
     # Plot warehouses
     if warehouses:
         for k, each in warehouses.items():
-            plt.plot(each.longitude, each.latitude, "sr", markersize=4)
+            if k in active_warehouses:
+                plt.plot(each.longitude,
+                        each.latitude,
+                        marker=kwargs.get('warehouse_active_marker', 'v'),
+                        color=kwargs.get('warehouse_active_markercolor', 'green'),
+                        markersize=kwargs.get('warehouse_active_markersize', 5))
+            else:
+                if not hide_inactive:
+                    plt.plot(each.longitude,
+                            each.latitude,
+                            marker=kwargs.get('warehouse_marker', 's'),
+                            color=kwargs.get('warehouse_markercolor', 'red'),
+                            markersize=kwargs.get('warehouse_markersize', 4))
 
     # Plot customers
     if customers:
-        for _, each in customers.items():
-            plt.plot(each.longitude, each.latitude, "ob", markersize=3)
-        
+        for c_id, each in customers.items():
+            # Highlight customers served by multiple suppliers
+            if c_id in multi_sourced.keys():
+                plt.plot(each.longitude,
+                        each.latitude,
+                        marker=kwargs.get('customer_multisourced_marker', '*'),
+                        color=kwargs.get('customer_multisourced_markercolor', 'yellow'),
+                        markersize=kwargs.get('customer_multisourced_markersize', 5))
+            else:
+                plt.plot(each.longitude,
+                        each.latitude,
+                        marker=kwargs.get('customer_marker', 'o'),
+                        color=kwargs.get('customer_markercolor', 'blue'),
+                        markersize=kwargs.get('customer_markersize', 4))
 
     # Remove axes
     plt.gca().axes.get_xaxis().set_visible(False)
