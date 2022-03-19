@@ -242,7 +242,7 @@ def netopt(num_warehouses=3,
         total_outflow += outflow            
         
         try:
-            assigned_customers = int(sum([assignment_vars[w, c].varValue for c in customers_id if assignment_vars[w, c].varValue == 1]))
+            assigned_customers = int(sum([1 if assignment_vars[w, c].varValue > 0. else 0 for c in customers_id ]))
         except TypeError:
             assigned_customers = 0
 
@@ -412,3 +412,29 @@ def plot_map(warehouses=None,
     # Remove axes
     plt.gca().axes.get_xaxis().set_visible(False)
     plt.gca().axes.get_yaxis().set_visible(False)
+
+
+def set_capacity(warehouses=None,
+                 w_id=None,
+                 capacity=None):
+    """ Change the capacity of the warehouse passed as w_id.
+        It changes the warehouses dict in place by producing a new nametuple Warehouse changing only teh capacity"""
+    from data_structures import Warehouse
+    
+    if w_id not in warehouses.keys():
+        return None
+
+    warehouse = warehouses[w_id]
+    warehouses[w_id] = Warehouse(name=warehouse.name,
+                                 city=warehouse.city,
+                                 state=warehouse.state,
+                                 zipcode=warehouse.zipcode,
+                                 latitude=warehouse.latitude,
+                                 longitude=warehouse.longitude,
+                                 capacity=capacity)
+    
+def set_all_capacities(warehouses=None,
+                       capacity=None):
+    """ Change the capacity of all warehouses with the given capacity"""
+    for k in warehouses.keys():
+        set_capacity(warehouses, k, capacity)
