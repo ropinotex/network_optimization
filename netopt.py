@@ -55,7 +55,7 @@ def netopt(num_warehouses=3,
     if not objective:
         print('Please, specify an objective between maxcover (maximise the demand within <high_service_distance>) and mindist (minimize weighted average distance)')
         return None
-    if objective not in ['maxcover', 'mindistance']:
+    if objective not in ['maxcover', 'mindistance', 'mincost']:
         print('Please, specify an objective between maxcover (maximise the demand within <high_service_distance>) and mindist (minimize weighted average distance)')
         return None
 
@@ -87,7 +87,7 @@ def netopt(num_warehouses=3,
 
     if objective == 'maxcover':
         pb = pl.LpProblem("NetworkOptimizationModel", pl.LpMaximize)
-    elif objective == 'mindistance':
+    elif objective in ['mindistance', 'mincost']:
         pb = pl.LpProblem("NetworkOptimizationModel", pl.LpMinimize)
 
     warehouses_id = set(warehouses.keys())
@@ -139,6 +139,10 @@ def netopt(num_warehouses=3,
         total_weighted_distance = pl.lpSum([customers[c].demand * distance[w, c] * assignment_vars[w, c] 
                                             for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
         pb.setObjective(total_weighted_distance)
+    elif objective == 'mincost':
+        total_cost = pl.lpSum([customers[c].demand * distance[w, c] * assignment_vars[w, c] 
+                               for w in warehouses_id for c in customers_id])
+        pb.setObjective(total_cost)
     else:
         print(f'Objective {objective} not recognized')
         return None
@@ -226,6 +230,8 @@ def netopt(num_warehouses=3,
     elif objective == 'mindistance':
         avg_weighted_distance = pl.value(pb.objective)
         print(f'Average weighted distance: {round(avg_weighted_distance, 0)}')
+    elif objective == 'mincost':
+        print(f'Total transportation cost: {round(pl.value(pb.objective), 0)}')
     else:
         print(f'Objective {objective} not recognized')
         return None
