@@ -91,7 +91,7 @@ def show_data(data):
         raise Exception('Param data must be a dict')
     df = []
     for k, v in data.items():
-        df.append(list(v))
+        df.append([k] + list(v))
 
-    df = pd.DataFrame(df, columns=['Id', 'City', 'State', 'Zipcode', 'x', 'y', 'Capcity/Demand'])
+    df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'x', 'y', 'Capcity/Demand'])
     return df

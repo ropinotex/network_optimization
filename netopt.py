@@ -39,6 +39,7 @@ def netopt(num_warehouses=3,
            forced_closed=None,
            force_single_sourcing=True,
            force_uncapacitated=False,
+           force_allocations=None,
            plot=True,
            hide_inactive=False,
            solver_log=False,
@@ -203,6 +204,15 @@ def netopt(num_warehouses=3,
                 facility_status_vars[w].upBound = 0
             except KeyError:
                 print(f'Warehouse {w} does not exist')
+
+    # Force allocations
+    if force_allocations and isinstance(force_allocations, list):
+        try:
+            for each in force_allocations:
+                assignment_vars[each[0], each[1]].lowBound = 1
+                assignment_vars[each[0], each[1]].upBound = 1
+        except KeyError:
+            pass
 
     print('OK')
     
