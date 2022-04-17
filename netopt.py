@@ -35,8 +35,8 @@ def netopt(num_warehouses=3,
            high_service_distance=None,
            avg_service_distance=None,
            max_service_distance=None,
-           forced_open=None,
-           forced_closed=None,
+           force_open=None,
+           force_closed=None,
            force_single_sourcing=True,
            force_uncapacitated=False,
            force_allocations=None,
@@ -188,18 +188,18 @@ def netopt(num_warehouses=3,
             assignment_vars[w, c].upBound = max_service_dist_par[w, c]
 
     # Force open warehouses
-    if forced_open and isinstance(forced_open, list):
-        print(f'Forcing open warehouses: {forced_open}')
-        for w in forced_open:
+    if force_open and isinstance(force_open, list):
+        print(f'Forcing open warehouses: {force_open}')
+        for w in force_open:
             try:
                 facility_status_vars[w].lowBound = 1
             except KeyError:
                 print(f'Warehouse {w} does not exist')
 
     # Force closed warehouses
-    if forced_closed and isinstance(forced_closed, list):
-        print(f'Forcing closed warehouses: {forced_closed}')
-        for w in forced_closed:
+    if force_closed and isinstance(force_closed, list):
+        print(f'Forcing closed warehouses: {force_closed}')
+        for w in force_closed:
             try:
                 facility_status_vars[w].upBound = 0
             except KeyError:
@@ -379,7 +379,8 @@ def plot_map(warehouses=None,
     if not active_warehouses:
         active_warehouses = []
 
-    plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
+    fig, ax = plt.subplots(figsize=(fig_x, fig_y), dpi=dpi)
+    # plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
 
     # Plot flows
     if flows:
@@ -428,6 +429,39 @@ def plot_map(warehouses=None,
     # Remove axes
     plt.gca().axes.get_xaxis().set_visible(False)
     plt.gca().axes.get_yaxis().set_visible(False)
+    ####################
+
+    annot = ax.annotate("", xy=(0,0), xytext=(-20,20),textcoords="offset points",
+                        bbox=dict(boxstyle="round", fc="w"),
+                        arrowprops=dict(arrowstyle="->"))
+    annot.set_visible(False)
+
+    def update_annot(ind):
+        x,y = line.get_data()
+        annot.xy = (x[ind["ind"][0]], y[ind["ind"][0]])
+        text = "{}, {}".format(" ".join(list(map(str,ind["ind"]))), 
+                            " ".join([names[n] for n in ind["ind"]]))
+        annot.set_text(text)
+        annot.get_bbox_patch().set_alpha(0.4)
+
+
+    def hover(event):
+        vis = annot.get_visible()
+        if event.inaxes == ax:
+            cont, ind = line.contains(event)
+            if cont:
+                update_annot(ind)
+                annot.set_visible(True)
+                fig.canvas.draw_idle()
+            else:
+                if vis:
+                    annot.set_visible(False)
+                    fig.canvas.draw_idle()
+
+    fig.canvas.mpl_connect("motion_notify_event", hover)
+
+    plt.show()
+    ############
 
 
 def set_capacity(warehouses=None,

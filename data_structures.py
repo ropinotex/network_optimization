@@ -14,6 +14,7 @@
 from collections import namedtuple
 from math import sqrt
 import pandas as pd
+from haversine import haversine
 
 
 Warehouse = namedtuple('Warehouse', 'name, city, state, zipcode, latitude, longitude, capacity')
@@ -46,19 +47,19 @@ def import_data(data, datatype):
 
         if datatype == 'warehouse':
             imported_data[n] = Warehouse(name=row[0],
-                                         city="",
+                                         city=row[0],
                                          state="",
                                          zipcode="",
-                                         latitude=float(row[2]),
-                                         longitude=float(row[1]),
+                                         latitude=float(row[1]),
+                                         longitude=float(row[2]),
                                          capacity=q)
         elif datatype == 'customer':
             imported_data[n] = Customer(name=row[0],
-                                        city="",
+                                        city=row[0],
                                         state="",
                                         zipcode="",
-                                        latitude=float(row[2]),
-                                        longitude=float(row[1]),
+                                        latitude=float(row[1]),
+                                        longitude=float(row[2]),
                                         demand=q)
     
     return imported_data
@@ -81,7 +82,7 @@ def calculate_dm(warehouses=None, customers=None):
 
     for kw, w in warehouses.items():
         for kc, c in customers.items():
-            dm[(kw, kc)] = dist(w, c)
+            dm[(kw, kc)] = haversine((w.longitude, w.latitude), (c.longitude, c.latitude))
 
     return dm
 
