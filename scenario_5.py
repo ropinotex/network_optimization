@@ -760,7 +760,8 @@ for k, value in warehouses.items():
                               zipcode=None,
                               latitude=value[3],
                               longitude=value[4],
-                              capacity=None)
+                              capacity=None,
+                              fixed_cost=None)
 
 for k, value in customers.items():
     customers[k] = Customer(name=value[0],

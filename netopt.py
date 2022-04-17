@@ -462,29 +462,3 @@ def plot_map(warehouses=None,
 
     plt.show()
     ############
-
-
-def set_capacity(warehouses=None,
-                 w_id=None,
-                 capacity=None):
-    """ Change the capacity of the warehouse passed as w_id.
-        It changes the warehouses dict in place by producing a new nametuple Warehouse changing only teh capacity"""
-    from data_structures import Warehouse
-    
-    if w_id not in warehouses.keys():
-        return None
-
-    warehouse = warehouses[w_id]
-    warehouses[w_id] = Warehouse(name=warehouse.name,
-                                 city=warehouse.city,
-                                 state=warehouse.state,
-                                 zipcode=warehouse.zipcode,
-                                 latitude=warehouse.latitude,
-                                 longitude=warehouse.longitude,
-                                 capacity=capacity)
-    
-def set_all_capacities(warehouses=None,
-                       capacity=None):
-    """ Change the capacity of all warehouses with the given capacity"""
-    for k in warehouses.keys():
-        set_capacity(warehouses, k, capacity)

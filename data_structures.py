@@ -17,7 +17,7 @@ import pandas as pd
 from haversine import haversine
 
 
-Warehouse = namedtuple('Warehouse', 'name, city, state, zipcode, latitude, longitude, capacity')
+Warehouse = namedtuple('Warehouse', 'name, city, state, zipcode, latitude, longitude, capacity, fixed_cost')
 Customer = namedtuple('Customer', 'name, city, state, zipcode, latitude, longitude, demand')
 
 def import_data(data, datatype):
@@ -52,7 +52,8 @@ def import_data(data, datatype):
                                          zipcode="",
                                          latitude=float(row[1]),
                                          longitude=float(row[2]),
-                                         capacity=q)
+                                         capacity=q,
+                                         fixed_cost=None)
         elif datatype == 'customer':
             imported_data[n] = Customer(name=row[0],
                                         city=row[0],
@@ -93,6 +94,62 @@ def show_data(data):
     df = []
     for k, v in data.items():
         df.append([k] + list(v))
-
-    df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'x', 'y', 'Capcity/Demand'])
+    if isinstance(data[list(data.keys())[0]], Warehouse):
+        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'x', 'y', 'Capacity', 'Fixed cost'])
+    elif isinstance(data[list(data.keys())[0]], Customer):
+        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'x', 'y', 'Demand'])
     return df
+
+
+def set_capacity(warehouses=None,
+                 w_id=None,
+                 capacity=None):
+    """ Change the capacity of the warehouse passed as w_id.
+        It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the capacity"""
+    
+    if w_id not in warehouses.keys():
+        return None
+
+    warehouse = warehouses[w_id]
+    warehouses[w_id] = Warehouse(name=warehouse.name,
+                                 city=warehouse.city,
+                                 state=warehouse.state,
+                                 zipcode=warehouse.zipcode,
+                                 latitude=warehouse.latitude,
+                                 longitude=warehouse.longitude,
+                                 capacity=capacity,
+                                 fixed_cost=warehouse.fixed_cost)
+
+
+def set_all_capacities(warehouses=None,
+                       capacity=None):
+    """ Change the capacity of all warehouses with the given capacity"""
+    for k in warehouses.keys():
+        set_capacity(warehouses, k, capacity)    
+
+
+def set_fixed_cost(warehouses=None,
+                   w_id=None,
+                   fixed_cost=None):
+    """ Change the fixed_cost of the warehouse passed as w_id.
+        It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the fixed_cost"""
+    
+    if w_id not in warehouses.keys():
+        return None
+
+    warehouse = warehouses[w_id]
+    warehouses[w_id] = Warehouse(name=warehouse.name,
+                                 city=warehouse.city,
+                                 state=warehouse.state,
+                                 zipcode=warehouse.zipcode,
+                                 latitude=warehouse.latitude,
+                                 longitude=warehouse.longitude,
+                                 capacity=warehouse.capacity,
+                                 fixed_cost=fixed_cost)
+
+
+def set_all_fixed_costs(warehouses=None,
+                        fixed_cost=None):
+    """ Change the fixed_cost of all warehouses with the given fixed_cost"""
+    for k in warehouses.keys():
+        set_fixed_cost(warehouses, k, fixed_cost)    
