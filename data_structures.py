@@ -97,16 +97,17 @@ def calculate_dm(warehouses=None, customers=None):
 
 def show_data(data):
     """ Print the data in a readable format """
-    if not isinstance(data, dict):
-        raise Exception('Param data must be a dict')
-    df = []
-    for k, v in data.items():
-        df.append([k] + list(v))
-    if isinstance(data[list(data.keys())[0]], Warehouse):
-        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Fixed cost'])
-    elif isinstance(data[list(data.keys())[0]], Customer):
-        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Demand'])
-    return df
+    with pd.option_context('display.max_rows', 100):  
+        if not isinstance(data, dict):
+            raise Exception('Param data must be a dict')
+        df = []
+        for k, v in data.items():
+            df.append([k] + list(v))
+        if isinstance(data[list(data.keys())[0]], Warehouse):
+            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Fixed cost'])
+        elif isinstance(data[list(data.keys())[0]], Customer):
+            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Demand'])
+        print(df.to_markdown())
 
 
 def set_capacity(warehouses=None,

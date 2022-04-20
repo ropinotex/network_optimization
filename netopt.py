@@ -40,9 +40,11 @@ def netopt(num_warehouses=3,
            force_single_sourcing=True,
            force_uncapacitated=False,
            force_allocations=None,
+           ignore_fixed_cost=False,
            plot=True,
            hide_inactive=False,
            solver_log=False,
+           unit_transport_cost=0.1,
            **kwargs):
     """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
         The objective is defined by the <objective> parameter, which can be either "maxcover" or "mindistance".
@@ -76,6 +78,8 @@ def netopt(num_warehouses=3,
     if not max_service_distance:
         max_service_distance = 99999
 
+    if not type(unit_transport_cost) == float:
+        raise Exception(f'unit_transport_cost must be a float, {unit_transport_cost} given')
 
     # check if values in distance_ranges are increasing
     if not all([True if y-x > 0 else False for (x, y) in zip(distance_ranges, distance_ranges[1:])]):
@@ -141,8 +145,13 @@ def netopt(num_warehouses=3,
                                             for w in warehouses_id for c in customers_id]) / pl.lpSum([customers[c].demand for c in customers_id])
         pb.setObjective(total_weighted_distance)
     elif objective == 'mincost':
-        total_cost = pl.lpSum([customers[c].demand * distance[w, c] * assignment_vars[w, c] 
+        total_cost = pl.lpSum([unit_transport_cost * customers[c].demand * distance[w, c] * assignment_vars[w, c] 
                                for w in warehouses_id for c in customers_id])
+
+        if not ignore_fixed_cost:
+            total_cost += pl.lpSum([warehouses[w].fixed_cost * facility_status_vars[w]
+                                    for w in warehouses_id])
+
         pb.setObjective(total_cost)
     else:
         print(f'Objective {objective} not recognized')
