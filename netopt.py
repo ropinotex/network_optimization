@@ -250,7 +250,14 @@ def netopt(num_warehouses=3,
         avg_weighted_distance = pl.value(pb.objective)
         print(f'Average weighted distance: {round(avg_weighted_distance, 0)}')
     elif objective == 'mincost':
-        print(f'Total transportation cost: {round(pl.value(pb.objective), 0)}')
+        print(f'Total cost: {round(pl.value(pb.objective), 0)}')
+        print('Cost splitting:')
+        print(f'- Transportation cost: {round(sum([unit_transport_cost * customers[c].demand * distance[w, c] * assignment_vars[w, c].varValue for w in warehouses_id for c in customers_id]), 0)}')
+
+        if not ignore_fixed_cost:
+            print(f'- Yearly fixed cost: {round(sum([warehouses[w].fixed_cost * facility_status_vars[w].varValue for w in warehouses_id]), 0)}')
+        else:
+            print('Forced ignoring fixed cost')            
     else:
         print(f'Objective {objective} not recognized')
         return None
