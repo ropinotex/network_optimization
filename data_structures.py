@@ -24,8 +24,9 @@ def import_data(data, datatype):
     """ Importa data from a variable. 
         The <data> parameter must be a list of strings containing values separated by ';'
         The data must be in this order:
-            - Warehouse: "IDENTIFIER;X_COORD;Y_COORD;CAPACITY;FIXED_COST"
-            - Customer: "IDENTIFIER;X_COORD;Y_COORD;DEMAND"
+            - Warehouse: "IDENTIFIER;LATITUDE;LONGITUDE;CAPACITY"
+            - Customer: "IDENTIFIER;LATITUDE;LONGITUDE;DEMAND"
+        Latitude is represented along the y-axis, whereas the longitude is represented along the x-axis        
         All values are required: if fixed costs are not relevant, set them to zero (do not omit)
         Use -1 to represent infinite capacity for the warehouses
         Parameter <datatype> must be either 'warehouse' or 'customer'
@@ -48,9 +49,10 @@ def import_data(data, datatype):
 
         if datatype == 'warehouse':
             try:
-                q = float(row[4])
-            except (ValueError, TypeError):
-                raise Exception(f'The warehouse {row[0]} fixed cost is not valid')
+                fixed_cost = float(row[4])
+            except (ValueError, TypeError, IndexError):
+                print(f'The warehouse {row[0]} fixed cost is not valid or missing: set to zero')
+                fixed_cost = 0.0
 
             imported_data[n] = Warehouse(name=row[0],
                                          city=row[0],
@@ -59,7 +61,7 @@ def import_data(data, datatype):
                                          latitude=float(row[1]),
                                          longitude=float(row[2]),
                                          capacity=q,
-                                         fixed_cost=None)
+                                         fixed_cost=fixed_cost)
         elif datatype == 'customer':
             imported_data[n] = Customer(name=row[0],
                                         city=row[0],
@@ -80,7 +82,7 @@ def dist(origin, destination):
 
 
 def calculate_dm(warehouses=None, customers=None):
-    """ Calculate the distance matrix between warehouses and customers"""
+    """ Calculate the distance matrix between warehouses and customers using the haversine formula"""
 
     if not all([warehouses, customers]):
         raise Exception('You must pass the location of warehouses and customers')
@@ -101,9 +103,9 @@ def show_data(data):
     for k, v in data.items():
         df.append([k] + list(v))
     if isinstance(data[list(data.keys())[0]], Warehouse):
-        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'x', 'y', 'Capacity', 'Fixed cost'])
+        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Fixed cost'])
     elif isinstance(data[list(data.keys())[0]], Customer):
-        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'x', 'y', 'Demand'])
+        df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Demand'])
     return df
 
 
