@@ -22,12 +22,13 @@ Customer = namedtuple('Customer', 'name, city, state, zipcode, latitude, longitu
 
 def import_data(data, datatype):
     """ Importa data from a variable. 
-        The data parameter must be a list of strings containing values separated by ';'
+        The <data> parameter must be a list of strings containing values separated by ';'
         The data must be in this order:
-            - Warehouse: "IDENTIFIER;X_COORD;Y_COORD;CAPACITY"
+            - Warehouse: "IDENTIFIER;X_COORD;Y_COORD;CAPACITY;FIXED_COST"
             - Customer: "IDENTIFIER;X_COORD;Y_COORD;DEMAND"
-        Use -1 to represent infinite capacity
-        Parameter datatype refers to either warehouse or customer
+        All values are required: if fixed costs are not relevant, set them to zero (do not omit)
+        Use -1 to represent infinite capacity for the warehouses
+        Parameter <datatype> must be either 'warehouse' or 'customer'
         It returns a variable containing all the data that can be used in the optimization function"""
 
     if datatype not in ['warehouse', 'customer']:
@@ -46,6 +47,11 @@ def import_data(data, datatype):
             q = float(row[3])
 
         if datatype == 'warehouse':
+            try:
+                q = float(row[4])
+            except (ValueError, TypeError):
+                raise Exception(f'The warehouse {row[0]} fixed cost is not valid')
+
             imported_data[n] = Warehouse(name=row[0],
                                          city=row[0],
                                          state="",
