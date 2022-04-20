@@ -24,7 +24,7 @@ def import_data(data, datatype):
     """ Importa data from a variable. 
         The <data> parameter must be a list of strings containing values separated by ';'
         The data must be in this order:
-            - Warehouse: "IDENTIFIER;LATITUDE;LONGITUDE;CAPACITY"
+            - Warehouse: "IDENTIFIER;LATITUDE;LONGITUDE;CAPACITY;FIXED_COST"
             - Customer: "IDENTIFIER;LATITUDE;LONGITUDE;DEMAND"
         Latitude is represented along the y-axis, whereas the longitude is represented along the x-axis        
         All values are required: if fixed costs are not relevant, set them to zero (do not omit)
