@@ -1,8 +1,8 @@
 # ==============================================================================
 # description     :Optimization models for teaching purposes
 # author          :Roberto Pinto
-# date            :2022.03.19
-# version         :1.1
+# date            :2022.04.21
+# version         :1.2
 # notes           :This software is meant for teaching purpose only and it is provided as-is under the GPL license.
 #                  The models are inspired by the book Watson, M., Lewis, S., Cacioppi, P., Jayaraman, J. (2013)
 #                  Supply Chain Network Design, Pearson. 
@@ -46,12 +46,41 @@ def netopt(num_warehouses=3,
            solver_log=False,
            unit_transport_cost=0.1,
            **kwargs):
-    """ Defines the optimal location of <num_warehouses> warehouses choosing from a set <warehouses>
-        The objective is defined by the <objective> parameter, which can be either "maxcover" or "mindistance".
-        high_service_distance: distance range within which the demand covered must be maximized
-        avg_service_distance: largest average weighted distance tolerated
-        max_service_distance: all customers must have a warehouse within this distance"""
-
+    """ Defines the optimal location of warehouses choosing from a set of candidate locations
+        The objective is defined by the <objective> parameter, which can be either "maxcover", "mindistance" or "mincost".
+        :param num_warehouses: number of warehouses to activate (integer number > 0)
+        :param warehouses: list of candidate locations (list of Warehouse)
+        :param customers: list of customer locations (list of Customer)
+        :param distance: distance matrix
+        :param distance_ranges: list of distances to compute the % of demand at different distances. For example, if distance_ranges = [0, 100, 200] the model returns the percentage of demand in the ranges [0, 100], (100, 200], (200, 99999], where 99999 is used to represent a very long distance (i.e. infinite distance).
+        :param objective: objective function to optimize. Can be "maxcover" (maximizes the demand covered), "mindistance" (minimizes the average weighted distance) or "mincost" (minimizes the sum transportation and fixed cost)
+        :param high_service_distance: distance range within which the demand covered must be maximized
+        :param avg_service_distance: largest average weighted distance tolerated
+        :param max_service_distance: all customers must have a warehouse within this distance
+        :param force_open: list of warehouse that are forced to be open. Use the ID of the warehouses (see show_data function) to specify the open ones
+        :param force_closed: list of warehouse that are forced to be closed. Use the ID of the warehouses (see show_data function) to specify the closed ones
+        :param force_single_sourcing: if True, forces the customers to have one single supplier.
+        :param force_uncapacitated: if True, the problem is solved without considering the capacities of the warehouse
+        :param force_allocations: list of pairs (warehouse_id, customer_id) forcing a warehouse to serve a customer. For example, [(1, 2), (1, 6)] forces the warehouse with id 1 to serve the customers with id 2 and 6
+        :param ignore_fixed_cost: if True, ignore the fixed cost in the objective function. This is used only for the "mincost" objective
+        :param plot: if True, plot the final solution
+        :param hide_inactive: if True, hides the inactive warehouses in the plot of the final solution
+        :param solver_log: if True, shows the log of the solver
+        :param unit_transport_cost: transportation cost per km and unit of product
+        :param warehouse_active_marker: shape of the active warehouse icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param warehouse_active_markercolor: color of the active warehouse icons. Allowed values are red, green, blue, black, yellow
+        :param warehouse_active_markersize: size of the active warehouse icons
+        :param warehouse_marker: shape of the warehouse icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param warehouse_markercolor: color of the warehouse icons. Allowed values are red, green, blue, black, yellow
+        :param warehouse_markersize: size of the warehouse icons
+        :param customer_multisourced_marker: shape of the multisourced customer icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param customer_multisourced_markercolor: color of the multisourced customer icons. Allowed values are red, green, blue, black, yellow
+        :param customer_multisourced_markersize: size of the multisourced customer icons
+        :param customer_marker: shape of the customer icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param customer_markercolor: color of the customer icons. Allowed values are red, green, blue, black, yellow
+        :param customer_markersize: size of the customer icons        
+        :return: the solution of the model or infeasible
+        """
 
     # check input
     print('CHECK INPUTS...', end="")
@@ -387,7 +416,27 @@ def plot_map(warehouses=None,
              active_warehouses=None,
              hide_inactive=False,
              **kwargs):
-    """ Plot the network data """
+    """ Plot the network data
+        :param warehouses: list of warehouses
+        :param customers: list of customers
+        :param flows: plot flows between warehouses and customers
+        :param active_warehouses: list of warehouses to be plotted as active
+        :param hide_inactive: if true, the warehouses not in the active_warehouses list will be hidden
+        :param multi_sourced: list of customers receiving flows from more than one warehouse. These will be plotted in a different color
+        :param warehouse_active_marker: shape of the active warehouse icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param warehouse_active_markercolor: color of the active warehouse icons. Allowed values are red, green, blue, black, yellow
+        :param warehouse_active_markersize: size of the active warehouse icons
+        :param warehouse_marker: shape of the warehouse icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param warehouse_markercolor: color of the warehouse icons. Allowed values are red, green, blue, black, yellow
+        :param warehouse_markersize: size of the warehouse icons
+        :param customer_multisourced_marker: shape of the multisourced customer icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param customer_multisourced_markercolor: color of the multisourced customer icons. Allowed values are red, green, blue, black, yellow
+        :param customer_multisourced_markersize: size of the multisourced customer icons
+        :param customer_marker: shape of the customer icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
+        :param customer_markercolor: color of the customer icons. Allowed values are red, green, blue, black, yellow
+        :param customer_markersize: size of the customer icons
+        :return: plot of the data
+     """
 
     if not multi_sourced:
         multi_sourced = {}

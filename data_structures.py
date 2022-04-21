@@ -1,14 +1,9 @@
 # ==============================================================================
-# description     :Optimization models for teaching purposes
+# description     :Support functions
 # author          :Roberto Pinto
-# date            :2022.03.22
-# version         :1.0
+# date            :2022.04.21
+# version         :1.2
 # notes           :This software is meant for teaching purpose only and it is provided as-is under the GPL license.
-#                  The models are inspired by the book Watson, M., Lewis, S., Cacioppi, P., Jayaraman, J. (2013)
-#                  Supply Chain Network Design, Pearson. 
-#                  http://networkdesignbook.com/
-#                  All the data has been taken from the book.
-#                  The software is provided as-is, with no guarantee by the author.
 # ==============================================================================
 
 from collections import namedtuple
@@ -162,3 +157,9 @@ def set_all_fixed_costs(warehouses=None,
     """ Change the fixed_cost of all warehouses with the given fixed_cost"""
     for k in warehouses.keys():
         set_fixed_cost(warehouses, k, fixed_cost)    
+
+
+def update_demand(customers=None,
+                  factor=1.):
+    """ Update all the demands multiplying by <factor> """
+    ...
