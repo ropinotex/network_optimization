@@ -77,7 +77,11 @@ def dist(origin, destination):
 
 
 def calculate_dm(warehouses=None, customers=None):
-    """ Calculate the distance matrix between warehouses and customers using the haversine formula"""
+    """ Calculate the distance matrix between warehouses and customers using the haversine formula
+        :param warehouses: list of warehouses
+        :param customers: list of customers
+        :return: distance matrix
+        """
 
     if not all([warehouses, customers]):
         raise Exception('You must pass the location of warehouses and customers')
@@ -108,8 +112,12 @@ def show_data(data):
 def set_capacity(warehouses=None,
                  w_id=None,
                  capacity=None):
-    """ Change the capacity of the warehouse passed as w_id.
-        It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the capacity"""
+    """ Change the capacity of a warehouse. It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the capacity
+        :param warehouses: list of warehouses
+        :param w_id: id of the warehouse to be modified
+        :param capacity: new capacity for the warehouse
+        :return: changes the warehouse list in place, do not return data
+    """
     
     if w_id not in warehouses.keys():
         return None
@@ -127,7 +135,11 @@ def set_capacity(warehouses=None,
 
 def set_all_capacities(warehouses=None,
                        capacity=None):
-    """ Change the capacity of all warehouses with the given capacity"""
+    """ Change the capacity of all warehouses with the given capacity
+        :param warehouses: list of warehouses
+        :param capacity: new capacity for the warehouses
+        :return: changes the warehouse list in place, do not return data
+        """
     for k in warehouses.keys():
         set_capacity(warehouses, k, capacity)    
 
@@ -135,8 +147,12 @@ def set_all_capacities(warehouses=None,
 def set_fixed_cost(warehouses=None,
                    w_id=None,
                    fixed_cost=None):
-    """ Change the fixed_cost of the warehouse passed as w_id.
-        It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the fixed_cost"""
+    """ Change the yearly fixed_cost of the warehouse. It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the fixed_cost
+        :param warehouses: list of warehouses
+        :param w_id: id of the warehouse to be modified
+        :param fixed_cost: new fixed cost for the warehouse
+        :return: changes the warehouse list in place, do not return data
+    """
     
     if w_id not in warehouses.keys():
         return None
@@ -154,12 +170,76 @@ def set_fixed_cost(warehouses=None,
 
 def set_all_fixed_costs(warehouses=None,
                         fixed_cost=None):
-    """ Change the fixed_cost of all warehouses with the given fixed_cost"""
+    """ Change the fixed_cost of all warehouses with the given fixed_cost
+        :param warehouses: list of warehouses
+        :param fixed_cost: new fixed cost for the warehouses
+        :return: changes the warehouse list in place, do not return data
+    """
     for k in warehouses.keys():
         set_fixed_cost(warehouses, k, fixed_cost)    
 
 
-def update_demand(customers=None,
+def scale_demand(customers=None,
+                  c_id=None,
                   factor=1.):
-    """ Update all the demands multiplying by <factor> """
-    ...
+    """ scale a customer demand by factor
+        :param customers: list of customers
+        :param c_id: id of the customer to be modified
+        :param factor: scaling factor for the demand. The function return the list of customers with each demand multiplied by factor (rounded to integer)
+        :return: changes the customer list in place, do not return data
+    """
+
+    if c_id not in customers.keys():
+        return None
+
+    customer = customers[c_id]
+    customers[c_id] = Customer(name=customer.name,
+                               city=customer.city,
+                               state=customer.state,
+                               zipcode=customer.zipcode,
+                               latitude=customer.latitude,
+                               longitude=customer.longitude,
+                               demand=round(customer.demand * factor, 0))
+    
+def scale_all_demands(customers=None,
+                       factor=1.):
+    """ scale all customer demands
+        :param customers: list of customers
+        :param factor: scaling factor for the demand. The function return the list of customers with each demand multiplied by factor (rounded to integer)
+        :return: changes the customer list in place, do not return data
+    """
+    for k in customers.keys():
+        update_demand(customers, k, factor)
+
+
+def set_demand(customers=None,
+               c_id=None,
+               demand=0.):
+    """ set a customer demand
+        :param customers: list of customers
+        :param c_id: id of the customer to be modified
+        :param demand: new demand for the customer. The function return the list of customers with each demand multiplied by factor (rounded to integer)
+        :return: changes the customer list in place, do not return data
+    """
+
+    if c_id not in customers.keys():
+        return None
+
+    customer = customers[c_id]
+    customers[c_id] = Customer(name=customer.name,
+                               city=customer.city,
+                               state=customer.state,
+                               zipcode=customer.zipcode,
+                               latitude=customer.latitude,
+                               longitude=customer.longitude,
+                               demand=demand)
+    
+def set_all_demands(customers=None,
+                    demand=0):
+    """ set all customer demands
+        :param customers: list of customers
+        :param demand: new demand for all customers. The function return the list of customers with each demand multiplied by factor (rounded to integer)
+        :return: changes the customer list in place, do not return data
+    """
+    for k in customers.keys():
+        set_demand(customers, k, demand)

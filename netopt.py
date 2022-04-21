@@ -55,7 +55,7 @@ def netopt(num_warehouses=3,
         :param distance_ranges: list of distances to compute the % of demand at different distances. For example, if distance_ranges = [0, 100, 200] the model returns the percentage of demand in the ranges [0, 100], (100, 200], (200, 99999], where 99999 is used to represent a very long distance (i.e. infinite distance).
         :param objective: objective function to optimize. Can be "maxcover" (maximizes the demand covered), "mindistance" (minimizes the average weighted distance) or "mincost" (minimizes the sum transportation and fixed cost)
         :param high_service_distance: distance range within which the demand covered must be maximized
-        :param avg_service_distance: largest average weighted distance tolerated
+        :param avg_service_distance: largest average weighted distance tolerated. This is used to limit the effect of random allocations of customers not contributing to the maxcover objective
         :param max_service_distance: all customers must have a warehouse within this distance
         :param force_open: list of warehouse that are forced to be open. Use the ID of the warehouses (see show_data function) to specify the open ones
         :param force_closed: list of warehouse that are forced to be closed. Use the ID of the warehouses (see show_data function) to specify the closed ones
