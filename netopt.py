@@ -26,6 +26,11 @@ def print_dict(data):
     pp.pprint(data)
 
 
+def print_solution(data):
+    """ Print some details of the solution"""
+    print_dict(data)
+
+
 def netopt(num_warehouses=3,
            warehouses=None,
            customers=None,

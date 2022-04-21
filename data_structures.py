@@ -103,9 +103,9 @@ def show_data(data):
         for k, v in data.items():
             df.append([k] + list(v))
         if isinstance(data[list(data.keys())[0]], Warehouse):
-            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Fixed cost'])
+            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Yeaarly fixed cost'])
         elif isinstance(data[list(data.keys())[0]], Customer):
-            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Demand'])
+            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Yearly demand'])
         
         df = df.drop(['State', 'Zipcode'], axis=1)
         print(df.to_markdown())
