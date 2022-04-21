@@ -106,6 +106,8 @@ def show_data(data):
             df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Fixed cost'])
         elif isinstance(data[list(data.keys())[0]], Customer):
             df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Demand'])
+        
+        df = df.drop(['State', 'Zipcode'], axis=1)
         print(df.to_markdown())
 
 
