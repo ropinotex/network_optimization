@@ -5,3 +5,4 @@ pandas
 PuLP==2.6.0
 matplotlib
 haversine
+tabulate
