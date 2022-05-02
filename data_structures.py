@@ -254,6 +254,22 @@ def show_assignments(results):
     """ Display the customers assigned to each active warehouse in a tabular format
         :param results: the results of an optimization run
     """
+    data = []
+    for each in results['customers_assignment']:
+        data.append([each['Warehouse_id'],
+                     each['Warehouse'],
+                     each['Customer_id'],
+                     each['Customer'],
+                     each['Customer Demand'],
+                     each['Distance']])
+    
+    data = pd.DataFrame(data=data, columns=['Warehouse_id',
+                                            'Warehouse',
+                                            'Customer_id',
+                                            'Customer',
+                                            'Customer_demand',
+                                            'Distance'])
+    with pd.option_context('display.max_rows', 100):  
+        print(data.to_markdown())
 
-    print(results['customers_assignment'])
 

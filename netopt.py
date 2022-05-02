@@ -320,8 +320,10 @@ def netopt(num_warehouses=3,
     for (w, c) in assignment_vars.keys():
         if assignment_vars[(w, c)].varValue > 0:
             cust = {
-                'Warehouse':str(warehouses[w].city) + ', ' + str(warehouses[w].state),
-                'Customer':str(customers[c].city) + ', ' + str(customers[c].state),
+                'Warehouse':str(warehouses[w].city),
+                'Warehouse_id': w,
+                'Customer':str(customers[c].city),
+                'Customer_id': c,
                 'Customer Demand': customers[c].demand,
                 'Distance': distance[w,c],
                 'Warehouse Latitude' : warehouses[w].latitude,
@@ -411,7 +413,8 @@ def netopt(num_warehouses=3,
             'most_distant_customer': df_cu['Distance'].max(),
             'demand_perc_by_ranges': demand_perc_by_ranges,
             'avg_customer_distance': df_cu['Distance'].mean(),
-            'multi_sourced_customers': list(multi_sourced.keys())
+            'multi_sourced_customers': list(multi_sourced.keys()),
+            'customers_assignment': customers_assignment
             }
 
 def plot_map(warehouses=None,
