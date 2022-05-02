@@ -210,8 +210,11 @@ def scale_all_demands(customers=None,
         :param factor: scaling factor for the demand. The function return the list of customers with each demand multiplied by factor (rounded to integer)
         :return: changes the customer list in place, do not return data
     """
+    if not customers:
+        raise Exception('You must pass the list of customers as a parameter')
+
     for k in customers.keys():
-        update_demand(customers, k, factor)
+        scale_demand(customers, k, factor)
 
 
 def set_demand(customers=None,
@@ -245,3 +248,12 @@ def set_all_demands(customers=None,
     """
     for k in customers.keys():
         set_demand(customers, k, demand)
+
+
+def show_assignments(results):
+    """ Display the customers assigned to each active warehouse in a tabular format
+        :param results: the results of an optimization run
+    """
+
+    print(results['customers_assignment'])
+
