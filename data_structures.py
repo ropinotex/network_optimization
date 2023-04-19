@@ -8,8 +8,10 @@
 
 from collections import namedtuple
 from math import sqrt
+from typing import Optional
 import pandas as pd
 from haversine import haversine
+import folium
 
 
 Warehouse = namedtuple('Warehouse', 'name, city, state, zipcode, latitude, longitude, capacity, fixed_cost')
@@ -103,7 +105,7 @@ def show_data(data):
         for k, v in data.items():
             df.append([k] + list(v))
         if isinstance(data[list(data.keys())[0]], Warehouse):
-            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Yeaarly fixed cost'])
+            df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Capacity', 'Yearly fixed cost'])
         elif isinstance(data[list(data.keys())[0]], Customer):
             df = pd.DataFrame(df, columns=['Id', 'Identifier', 'City', 'State', 'Zipcode', 'Latitude', 'Longitude', 'Yearly demand'])
         
@@ -273,3 +275,51 @@ def show_assignments(results):
         print(data.to_markdown())
 
 
+def get_demand(customers) -> float:
+    """ Return the demand of a set of customers """
+    tot = 0
+    for each in customers.values():
+        tot += each.demand
+    return tot
+
+
+def get_capacity(warehouses) -> float:
+    """ Return the capacity of a set of warehouses """
+    tot = 0
+    for each in warehouses.values():
+        tot += each.capacity
+    return tot
+
+
+def show_geo_map(customers: Optional[dict]=None, warehouses: Optional[dict]=None, zoom=8):
+    """ Show the map with the locations of customers and warehouses (if provided)"""
+
+    # Convert data to be displayed
+    _customers = []
+    _warehouses = []
+
+    if customers:
+        for _, each in customers.items():
+            _customers.append({"name": each.name,
+                               "location": [each.latitude, each.longitude],
+                               "demand": each.demand})
+
+    if warehouses:
+        for _, each in warehouses.items():
+            _warehouses.append({"name": each.name,
+                                "location": [each.latitude, each.longitude],
+                                "capacity": each.capacity})
+
+    # Create Map
+    map = folium.Map(location=_customers[0]["location"], zoom_start=zoom)
+
+
+    if _customers:
+        for each in _customers:
+            folium.Marker(location=each["location"], popup=f"{each['name']} - Demand: {each['demand']}", icon=folium.Icon(color="green")).add_to(map)
+
+    if _warehouses:
+        for each in _warehouses:
+            folium.Marker(location=each["location"], popup=f"{each['name']} - Capacity: {each['capacity']}", icon=folium.Icon(color="red")).add_to(map)
+
+    return map
