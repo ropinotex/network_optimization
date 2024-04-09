@@ -51,6 +51,7 @@ def netopt(
     ignore_fixed_cost=False,
     plot=True,
     hide_inactive=False,
+    hide_flows=False,
     solver_log=False,
     unit_transport_cost=0.1,
     **kwargs,
@@ -74,6 +75,7 @@ def netopt(
     :param ignore_fixed_cost: if True, ignore the fixed cost in the objective function. This is used only for the "mincost" objective
     :param plot: if True, plot the final solution
     :param hide_inactive: if True, hides the inactive warehouses in the plot of the final solution
+    :param hide_flows: if True, hides the flows in the plot of the final solution
     :param solver_log: if True, shows the log of the solver
     :param unit_transport_cost: transportation cost per km and unit of product
     :param warehouse_active_marker: shape of the active warehouse icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
@@ -494,6 +496,7 @@ def netopt(
             active_warehouses=active_warehouses,
             hide_inactive=hide_inactive,
             multi_sourced=multi_sourced,
+            hide_flows=hide_flows,
             options=plot_options,
             **kwargs,
         )
@@ -546,6 +549,7 @@ def plot_map(
     active_warehouses: set = set(),
     options: dict = dict(),
     hide_inactive: bool = False,
+    hide_flows: bool = False,
     **kwargs,
 ):
     """Plot the network data
@@ -580,9 +584,24 @@ def plot_map(
     # plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
 
     ax.set_aspect("equal")
+    # Check if radius is defined and should be plotted
 
+    if radius := options.get("radius", None):
+        print(f"PLOTTING RADIUS {radius}...")
+        for k, each in warehouses.items():
+            if k in active_warehouses:
+                circle = Circle(
+                    (each.longitude, each.latitude),
+                    radius / 100,
+                    edgecolor="blue",
+                    facecolor="lightblue",
+                    fill=True,
+                    alpha=0.2,
+                    linestyle="-",
+                )
+                ax.add_patch(circle)
     # Plot flows
-    if flows:
+    if flows and not hide_flows:
         for flow in flows:
             plt.plot(
                 [warehouses[flow[0]].longitude, customers[flow[1]].longitude],
@@ -633,23 +652,6 @@ def plot_map(
                     color=kwargs.get("customer_markercolor", "blue"),
                     markersize=kwargs.get("customer_markersize", 4),
                 )
-
-    # Check if radius is defined and should be plotted
-
-    if radius := options.get("radius", None):
-        print(f"PLOTTING RADIUS {radius}...")
-        for k, each in warehouses.items():
-            if k in active_warehouses:
-                circle = Circle(
-                    (each.longitude, each.latitude),
-                    radius / 100,
-                    edgecolor="blue",
-                    facecolor="lightblue",
-                    fill=True,
-                    alpha=0.2,
-                    linestyle="-",
-                )
-                ax.add_patch(circle)
 
     # Remove axes
     plt.gca().axes.get_xaxis().set_visible(False)
