@@ -85,7 +85,7 @@ def import_data(data, datatype):
     return imported_data
 
 
-def dist(origin, destination):
+def dist(origin: Warehouse, destination: Customer) -> float:
     """Return the distance between origin and destination.
     origin must be of type Warehouse, whereas destination must be of type Customer"""
 
@@ -96,10 +96,10 @@ def dist(origin, destination):
         )
 
 
-def calculate_dm(warehouses=None, customers=None, use_haversine=True):
+def calculate_dm(warehouses: dict, customers: dict, use_haversine: bool = True) -> dict:
     """Calculate the distance matrix between warehouses and customers using the haversine formula
-    :param warehouses: list of warehouses
-    :param customers: list of customers
+    :param warehouses: dict of warehouses
+    :param customers: dict of customers
     :return: distance matrix
     """
 
@@ -122,7 +122,7 @@ def calculate_dm(warehouses=None, customers=None, use_haversine=True):
     return dm
 
 
-def show_data(data):
+def show_data(data: dict) -> None:
     """Print the data in a readable format"""
     with pd.option_context("display.max_rows", 100):
         if not isinstance(data, dict):
@@ -164,7 +164,7 @@ def show_data(data):
         print(df.to_markdown())
 
 
-def set_capacity(warehouses=None, w_id=None, capacity=None):
+def set_capacity(warehouses: dict, w_id: int, capacity: int | float) -> None:
     """Change the capacity of a warehouse. It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the capacity
     :param warehouses: list of warehouses
     :param w_id: id of the warehouse to be modified
@@ -188,7 +188,7 @@ def set_capacity(warehouses=None, w_id=None, capacity=None):
     )
 
 
-def set_all_capacities(warehouses=None, capacity=None):
+def set_all_capacities(warehouses: dict, capacity: int | float) -> None:
     """Change the capacity of all warehouses with the given capacity
     :param warehouses: list of warehouses
     :param capacity: new capacity for the warehouses
@@ -198,7 +198,7 @@ def set_all_capacities(warehouses=None, capacity=None):
         set_capacity(warehouses, k, capacity)
 
 
-def set_fixed_cost(warehouses=None, w_id=None, fixed_cost=None):
+def set_fixed_cost(warehouses: dict, w_id: int, fixed_cost: int | float) -> None:
     """Change the yearly fixed_cost of the warehouse. It changes the warehouses dict in place by producing a new nametuple Warehouse changing only the fixed_cost
     :param warehouses: list of warehouses
     :param w_id: id of the warehouse to be modified
@@ -222,7 +222,7 @@ def set_fixed_cost(warehouses=None, w_id=None, fixed_cost=None):
     )
 
 
-def set_all_fixed_costs(warehouses=None, fixed_cost=None):
+def set_all_fixed_costs(warehouses: dict, fixed_cost: int | float) -> None:
     """Change the fixed_cost of all warehouses with the given fixed_cost
     :param warehouses: list of warehouses
     :param fixed_cost: new fixed cost for the warehouses
@@ -232,7 +232,7 @@ def set_all_fixed_costs(warehouses=None, fixed_cost=None):
         set_fixed_cost(warehouses, k, fixed_cost)
 
 
-def scale_demand(customers=None, c_id=None, factor=1.0):
+def scale_demand(customers: dict, c_id: int, factor: float = 1.0) -> None:
     """scale a customer demand by factor
     :param customers: list of customers
     :param c_id: id of the customer to be modified
@@ -255,7 +255,7 @@ def scale_demand(customers=None, c_id=None, factor=1.0):
     )
 
 
-def scale_all_demands(customers=None, factor=1.0):
+def scale_all_demands(customers: dict, factor: float = 1.0) -> None:
     """scale all customer demands
     :param customers: list of customers
     :param factor: scaling factor for the demand. The function return the list of customers with each demand multiplied by factor (rounded to integer)
@@ -268,7 +268,7 @@ def scale_all_demands(customers=None, factor=1.0):
         scale_demand(customers, k, factor)
 
 
-def set_demand(customers=None, c_id=None, demand=0.0):
+def set_demand(customers: dict, c_id: int, demand: int | float = 0.0) -> None:
     """set a customer demand
     :param customers: list of customers
     :param c_id: id of the customer to be modified
@@ -291,7 +291,7 @@ def set_demand(customers=None, c_id=None, demand=0.0):
     )
 
 
-def set_all_demands(customers=None, demand=0):
+def set_all_demands(customers: dict, demand: int | float = 0) -> None:
     """set all customer demands
     :param customers: list of customers
     :param demand: new demand for all customers. The function return the list of customers with each demand multiplied by factor (rounded to integer)
@@ -333,7 +333,7 @@ def show_assignments(results):
         print(data.to_markdown())
 
 
-def get_demand(customers) -> float:
+def get_demand(customers: dict) -> float:
     """Return the demand of a set of customers"""
     tot = 0
     for each in customers.values():
@@ -341,7 +341,7 @@ def get_demand(customers) -> float:
     return tot
 
 
-def get_capacity(warehouses) -> float:
+def get_capacity(warehouses: dict) -> float:
     """Return the capacity of a set of warehouses"""
     tot = 0
     for each in warehouses.values():
@@ -350,8 +350,8 @@ def get_capacity(warehouses) -> float:
 
 
 def show_geo_map(
-    customers: Optional[dict] = None, warehouses: Optional[dict] = None, zoom=8
-):
+    customers: Optional[dict] = None, warehouses: Optional[dict] = None, zoom: int = 8
+) -> folium.Map:
     """Show the map with the locations of customers and warehouses (if provided)"""
 
     # Convert data to be displayed
