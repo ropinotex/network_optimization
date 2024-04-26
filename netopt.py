@@ -59,7 +59,7 @@ def netopt(
 ):
     """Defines the optimal location of warehouses choosing from a set of candidate locations
     The objective is defined by the <objective> parameter, which can be either "maxcover", "mindistance" or "mincost".
-    :param num_warehouses: number of warehouses to activate (integer number > 0)
+    :param num_warehouses: number of warehouses to activate (integer number > 0). Equivalent to parameter p in the p-median
     :param warehouses: list of candidate locations (list of Warehouse)
     :param customers: list of customer locations (list of Customer)
     :param distance: distance matrix
@@ -364,7 +364,7 @@ def netopt(
     print("OK")
 
     # The problem is solved using PuLP's choice of Solver
-    print("SOLVE...", end="")
+    print("SOLVING (time limit = 120 seconds)...", end="")
     _solver = pl.PULP_CBC_CMD(
         keepFiles=False, gapRel=0.00, timeLimit=120, msg=solver_log
     )
@@ -373,7 +373,13 @@ def netopt(
 
     print("Optimization Status ", pl.LpStatus[pb.status])  # print in Jupyter Notebook
     if pl.LpStatus[pb.status] == "Infeasible":
-        print("********* ERROR: Model not feasible, don't use results.")
+        print("********* ERROR: Model not feasible, don't use the results.")
+        return None
+    elif pl.LpStatus[pb.status] == "Not Solved":
+        print(
+            "********* ERROR: Model not solved, time limit probably exceeded (the model is likely too large), don't use the results."
+        )
+        return None
 
     # print objective
     flows = {
@@ -413,7 +419,7 @@ def netopt(
         return None
 
     print()
-    print(f"Open warehouses:")
+    print(f"Open warehouses: ({len(active_warehouses)} out of {len(warehouses)})")
     total_outflow = 0.0
     for w in active_warehouses:
         try:

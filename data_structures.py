@@ -363,6 +363,7 @@ def show_geo_map(
             _customers.append(
                 {
                     "name": each.name,
+                    "city": each.city,
                     "location": [each.latitude, each.longitude],
                     "demand": each.demand,
                 }
@@ -373,6 +374,7 @@ def show_geo_map(
             _warehouses.append(
                 {
                     "name": each.name,
+                    "city": each.city,
                     "location": [each.latitude, each.longitude],
                     "capacity": each.capacity,
                 }
@@ -385,7 +387,7 @@ def show_geo_map(
         for each in _customers:
             folium.Marker(
                 location=each["location"],
-                popup=f"{each['name']} - Demand: {each['demand']}",
+                popup=f"{each['name']} - {each['city']}\n\r Demand: {each['demand']}",
                 icon=folium.Icon(color="green"),
             ).add_to(map)
 
@@ -393,7 +395,7 @@ def show_geo_map(
         for each in _warehouses:
             folium.Marker(
                 location=each["location"],
-                popup=f"{each['name']} - Capacity: {each['capacity']}",
+                popup=f"{each['name']} - {each['city']}\n\r Capacity: {each['capacity']}",
                 icon=folium.Icon(color="red"),
             ).add_to(map)
 
