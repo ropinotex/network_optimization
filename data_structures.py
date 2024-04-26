@@ -398,3 +398,111 @@ def show_geo_map(
             ).add_to(map)
 
     return map
+
+
+def add_warehouse(warehouses: dict | None, new_warehouse: Warehouse) -> None:
+    """Add a warehouse to the list of warehouses
+    :param warehouses: current set of warehouses
+    :param new_warehouse: new warehouse to be added"""
+    if warehouses is None or not isinstance(warehouses, dict):
+        raise Exception("<add_warehouse> The parameter warehouses must be a dictionary")
+    warehouses[len(warehouses)] = new_warehouse
+
+
+def add_customer(customers: dict | None, new_customer: Customer) -> None:
+    """Add a customer to the list of customers
+    :param customers: current set of customers
+    :param new_customer: new customer to be added"""
+    if customers is None or not isinstance(customers, dict):
+        raise Exception("The parameter customers must be a dictionary")
+    customers[len(customers)] = new_customer
+
+
+def add_warehouse_from_data(
+    warehouses: dict | None = None,
+    name: str = "",
+    city: str = "",
+    state: str = "",
+    zipcode: str = "",
+    latitude: float = 0.0,
+    longitude: float = 0.0,
+    capacity: float = 0.0,
+    fixed_cost: float = 0.0,
+) -> None:
+    """Add a warehouse to the list of warehouses from data
+    :param warehouses: current set of warehouses"""
+
+    if not isinstance(warehouses, dict):
+        raise Exception("The parameter warehouses must be a dictionary")
+
+    if not all([name, latitude, longitude]):
+        raise Exception("All parameters are required")
+
+    # check range of latitude and longitude
+    if latitude < -90 or latitude > 90:
+        raise Exception("Latitude must be between -90 and 90")
+    if longitude < -180 or longitude > 180:
+        raise Exception("Longitude must be between -180 and 180")
+
+    if list(filter(lambda x: x.name == name, warehouses.values())):
+        print(
+            f"The warehouse name {name} already exists. Warehouse's name must be unique"
+        )
+        return None
+
+    new_warehouse = Warehouse(
+        name=name,
+        city=city,
+        state=state,
+        zipcode=zipcode,
+        latitude=latitude,
+        longitude=longitude,
+        capacity=capacity,
+        fixed_cost=fixed_cost,
+    )
+
+    add_warehouse(warehouses=warehouses, new_warehouse=new_warehouse)
+
+
+def add_customer_from_data(
+    customers: dict | None = None,
+    name: str = "",
+    city: str = "",
+    state: str = "",
+    zipcode: str = "",
+    latitude: float = 0.0,
+    longitude: float = 0.0,
+    demand: float = 0.0,
+) -> None:
+    """Add a customer to the list of customers from data
+    :param customers: current set of customers"""
+
+    if not isinstance(customers, dict):
+        raise Exception("The parameter customers must be a dictionary")
+
+    if not all([name, latitude, longitude]):
+        raise Exception("All parameters are required")
+
+    # check range of latitude and longitude
+    if latitude < -90 or latitude > 90:
+        raise Exception("Latitude must be between -90 and 90")
+    if longitude < -180 or longitude > 180:
+        raise Exception("Longitude must be between -180 and 180")
+
+    if list(filter(lambda x: x.name == name, customers.values())):
+        print(
+            f"The customer name {name} already exists. Customer's name must be unique"
+        )
+        return None
+
+    new_customer = Customer(
+        name=name,
+        city=city,
+        state=state,
+        zipcode=zipcode,
+        latitude=latitude,
+        longitude=longitude,
+        demand=demand,
+    )
+
+    add_customer(customers=customers, new_customer=new_customer)
