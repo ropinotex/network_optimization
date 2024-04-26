@@ -54,6 +54,7 @@ def netopt(
     hide_flows=False,
     solver_log=False,
     unit_transport_cost=0.1,
+    mutually_exclusive=None,
     **kwargs,
 ):
     """Defines the optimal location of warehouses choosing from a set of candidate locations
@@ -76,6 +77,7 @@ def netopt(
     :param plot: if True, plot the final solution
     :param hide_inactive: if True, hides the inactive warehouses in the plot of the final solution
     :param hide_flows: if True, hides the flows in the plot of the final solution
+    :param mutually_exclusive: list of lists/tuples of warehouses that cannot be open at the same time. For example, [[1, 2], [3, 4]] means that warehouses 1 and 2 cannot be open at the same time, and the same for warehouses 3 and 4
     :param solver_log: if True, shows the log of the solver
     :param unit_transport_cost: transportation cost per km and unit of product
     :param warehouse_active_marker: shape of the active warehouse icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
@@ -260,12 +262,32 @@ def netopt(
             name=f"Customer_{c}_Served",
         )
 
-    pb += pl.LpConstraint(
-        e=pl.lpSum([facility_status_vars[w] for w in warehouses_id]),
-        sense=pl.LpConstraintEQ,
-        rhs=num_warehouses,
-        name=f"Num_of_active_warehouses",
-    )
+    # If the number of warehouse is given, solve a p-median problem,
+    # else a FLP (capacitated or uncapacitated depending on the value of force_uncapacitated)
+    if num_warehouses and num_warehouses > 0:
+        pb += pl.LpConstraint(
+            e=pl.lpSum([facility_status_vars[w] for w in warehouses_id]),
+            sense=pl.LpConstraintEQ,
+            rhs=num_warehouses,
+            name=f"Num_of_active_warehouses",
+        )
+    # else:
+    #     pb += pl.LpConstraint(
+    #         e=pl.lpSum([facility_status_vars[w] for w in warehouses_id]),
+    #         sense=pl.LpConstraintLE,
+    #         rhs=num_warehouses,
+    #         name=f"Max_num_of_active_warehouses",
+    #     )
+
+    # Impose mutual exclusivity between warehouses
+    if mutually_exclusive:
+        for seq in mutually_exclusive:
+            pb += pl.LpConstraint(
+                e=pl.lpSum([facility_status_vars[w] for w in seq]),
+                sense=pl.LpConstraintLE,
+                rhs=1,
+                name=f"Mutually_exclusive_warehouses_{seq}",
+            )
 
     for w in warehouses_id:
         for c in customers_id:
