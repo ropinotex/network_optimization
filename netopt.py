@@ -371,7 +371,7 @@ def netopt(
     pb.solve(solver=_solver)
     print("OK")
 
-    print("Optimization Status ", pl.LpStatus[pb.status])  # print in Jupyter Notebook
+    print("Optimization Status: ", pl.LpStatus[pb.status])  # print in Jupyter Notebook
     if pl.LpStatus[pb.status] == "Infeasible":
         print("********* ERROR: Model not feasible, don't use the results.")
         return None
@@ -557,6 +557,7 @@ def netopt(
         # plt.gca().axes.get_yaxis().set_visible(False)
 
     return {
+        "status": pl.LpStatus[pb.status],
         "objective_value": pl.value(pb.objective),
         "avg_weighted_distance": avg_weighted_distance,
         "active_warehouses_id": active_warehouses,

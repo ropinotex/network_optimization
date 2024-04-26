@@ -438,6 +438,7 @@ def add_warehouse_from_data(
         raise Exception("The parameter warehouses must be a dictionary")
 
     if not all([name, latitude, longitude]):
+        print(f"{name=} - {latitude=} - {longitude=}")
         raise Exception("All parameters are required")
 
     # check range of latitude and longitude
