@@ -447,10 +447,10 @@ def netopt(
             assigned_customers = 0
 
         print(
-            f"ID: {w:3} City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11} units"
+            f"ID: {w:3} City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11.0f} units"
         )
     print()
-    print(f"Total outflow: {total_outflow} units")
+    print(f"Total outflow: {total_outflow:.0f} units")
 
     customers_assignment = []
     for w, c in assignment_vars.keys():
@@ -492,8 +492,8 @@ def netopt(
             (distance_range_lower_limit, distance_range_upper_limit)
         ] = perc_of_demand_in_band
 
-    print(f"Most distant customer is at {df_cu['Distance'].max()}")
-    print(f"Average customers distance (no weights): {df_cu['Distance'].mean()}")
+    print(f"Most distant customer is at {df_cu['Distance'].max():.1f} km")
+    print(f"Average customers distance (no weights): {df_cu['Distance'].mean():.1f} km")
 
     df_cu["Weighted_Distance"] = df_cu["Distance"] * df_cu["Customer Demand"]
     avg_weighted_distance = (

@@ -381,7 +381,10 @@ def show_geo_map(
             )
 
     # Create Map
-    map = folium.Map(location=_customers[0]["location"], zoom_start=zoom)
+    if _customers:
+        map = folium.Map(location=_customers[0]["location"], zoom_start=zoom)
+    else:
+        map = folium.Map(location=_warehouses[0]["location"], zoom_start=zoom)
 
     if _customers:
         for each in _customers:
