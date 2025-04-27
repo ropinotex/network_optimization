@@ -350,6 +350,9 @@ class NetworkOptimizer(ABC):
             hide_flows: Whether to hide flows
             plot_size: Size of the plot as a tuple (width, height)
         """
+
+        from netopt import plot_map
+
         plot_map(
             warehouses=self.warehouses,
             customers=self.customers,
@@ -506,7 +509,7 @@ class PMedianOptimizer(NetworkOptimizer):
             print("No solution available. Please solve the model first.")
             return
 
-        print(f"P-Median optimization results:")
+        print("P-Median optimization results:")
         print(
             f"Average weighted distance: {round(self.solution['objective_value'], 1)}"
         )
@@ -718,7 +721,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
             print("No solution available. Please solve the model first.")
             return
 
-        print(f"Uncapacitated FLP optimization results:")
+        print("Uncapacitated FLP optimization results:")
         print(f"Total cost: {round(self.solution['objective_value'], 0)}")
 
         # Calculate and print cost breakdown
@@ -793,7 +796,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
             print("No solution available. Please solve the model first.")
             return
 
-        print(f"Capacitated FLP optimization results:")
+        print("Capacitated FLP optimization results:")
         print(f"Total cost: {round(self.solution['objective_value'], 0)}")
 
         # Calculate and print cost breakdown
