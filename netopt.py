@@ -17,10 +17,46 @@ import matplotlib.pyplot as plt
 import pprint
 from matplotlib.patches import Circle
 from data_structures import show_geo_map
+import requests
+from typing import Tuple, Optional, Dict, List, Set, Union
 
 dpi = 136
 # fig_x = 8
 # fig_y = 8
+
+
+def get_city_coords(city_name: str) -> tuple[float | None, float | None]:
+    """Get latitude and longitude coordinates for a city using an external API
+
+    Args:
+        city_name: Name of the city
+
+    Returns:
+        Tuple containing latitude and longitude or (None, None) if not found
+    """
+    try:
+        api_key = None  # Replace with your API key if using a paid service
+        base_url = "https://nominatim.openstreetmap.org/search"
+
+        params = {"q": city_name, "format": "json", "limit": 1}
+
+        headers = {
+            "User-Agent": "NetworkOptimizationTool/1.0"  # Required by Nominatim API
+        }
+
+        response = requests.get(base_url, params=params, headers=headers)
+        data = response.json()
+
+        if data:
+            latitude = float(data[0]["lat"])
+            longitude = float(data[0]["lon"])
+            return latitude, longitude
+
+        return None, None
+
+    except Exception as e:
+        print(f"Error getting coordinates for {city_name}: {str(e)}")
+        return None, None
 
 
 def print_dict(data):
