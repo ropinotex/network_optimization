@@ -1,8 +1,8 @@
 # ==============================================================================
 # description     :Optimization models for teaching purposes
 # author          :Roberto Pinto
-# date            :2024.04.04
-# version         :1.3
+# date            :2025.03.24
+# version         :1.5
 # notes           :This software is meant for teaching purpose only and it is provided as-is under the GPL license.
 #                  The models are inspired by the book Watson, M., Lewis, S., Cacioppi, P., Jayaraman, J. (2013)
 #                  Supply Chain Network Design, Pearson.
@@ -16,10 +16,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pprint
 from matplotlib.patches import Circle
+from data_structures import show_geo_map
 
 dpi = 136
-fig_x = 8
-fig_y = 8
+# fig_x = 8
+# fig_y = 8
 
 
 def print_dict(data):
@@ -34,32 +35,35 @@ def print_solution(data):
 
 
 def netopt(
-    num_warehouses=3,
-    warehouses=None,
-    customers=None,
-    distance=None,
-    distance_ranges=None,
-    objective="",
-    high_service_distance=None,
-    avg_service_distance=None,
-    max_service_distance=None,
-    force_open=None,
-    force_closed=None,
-    force_single_sourcing=True,
-    force_uncapacitated=False,
-    force_allocations=None,
-    ignore_fixed_cost=False,
-    plot=True,
-    hide_inactive=False,
-    hide_flows=False,
-    solver_log=False,
-    unit_transport_cost=0.1,
-    mutually_exclusive=None,
+    num_warehouses: int,
+    factories: dict | None,
+    warehouses: dict,
+    customers: dict,
+    distance: dict | None = None,
+    distance_ranges: list | None = None,
+    objective: str = "",
+    high_service_distance: float | None = None,
+    avg_service_distance: float | None = None,
+    max_service_distance: float | None = None,
+    force_open: list | None = None,
+    force_closed: list | None = None,
+    force_single_sourcing: bool = True,
+    force_uncapacitated: bool = False,
+    force_allocations: list[tuple] | None = None,
+    ignore_fixed_cost: bool = False,
+    plot: bool = True,
+    plot_size: tuple[int, int] = (8, 12),
+    hide_inactive: bool = False,
+    hide_flows: bool = False,
+    solver_log: bool = False,
+    unit_transport_cost: float = 0.1,
+    mutually_exclusive: list[tuple[int, int]] | None = None,
     **kwargs,
 ):
     """Defines the optimal location of warehouses choosing from a set of candidate locations
     The objective is defined by the <objective> parameter, which can be either "maxcover", "mindistance" or "mincost".
     :param num_warehouses: number of warehouses to activate (integer number > 0). Equivalent to parameter p in the p-median
+    :param factories: list of factories (list of Factory). Can be None if not used. If set, solves an FLP problem with three levels: factories, warehouses and customers.
     :param warehouses: list of candidate locations (list of Warehouse)
     :param customers: list of customer locations (list of Customer)
     :param distance: distance matrix
@@ -75,6 +79,7 @@ def netopt(
     :param force_allocations: list of pairs (warehouse_id, customer_id) forcing a warehouse to serve a customer. For example, [(1, 2), (1, 6)] forces the warehouse with id 1 to serve the customers with id 2 and 6
     :param ignore_fixed_cost: if True, ignore the fixed cost in the objective function. This is used only for the "mincost" objective
     :param plot: if True, plot the final solution
+    :param plot_size: a tuple (size_x, size_y) defining the size of the plot
     :param hide_inactive: if True, hides the inactive warehouses in the plot of the final solution
     :param hide_flows: if True, hides the flows in the plot of the final solution
     :param mutually_exclusive: list of lists/tuples of warehouses that cannot be open at the same time. For example, [[1, 2], [3, 4]] means that warehouses 1 and 2 cannot be open at the same time, and the same for warehouses 3 and 4
@@ -98,6 +103,8 @@ def netopt(
     # To pass further options to plot_map
     plot_options = {}
     # check input
+
+    #################################   Check inputs  #######################################
     print("CHECK INPUTS...", end="")
     if not objective:
         print(
@@ -126,7 +133,7 @@ def netopt(
     if not max_service_distance:
         max_service_distance = 99999
 
-    if not type(unit_transport_cost) == float:
+    if type(unit_transport_cost) is not float:
         raise Exception(
             f"unit_transport_cost must be a float, {unit_transport_cost} given"
         )
@@ -144,21 +151,30 @@ def netopt(
         return None
     print("OK")
 
-    print("BUILD MODEL...", end="")
-    # define the problem container
+    #################################   Building model  #######################################
 
+    print("BUILD MODEL...", end="")
+
+    # Define the problem container according to the objective function
     if objective == "maxcover":
         pb = pl.LpProblem("NetworkOptimizationModel", pl.LpMaximize)
     elif objective in ["mindistance", "mincost"]:
         pb = pl.LpProblem("NetworkOptimizationModel", pl.LpMinimize)
+    else:
+        raise Exception(
+            f"Objective {objective} not recognized. Please, use maxcover, mindistance or mincost"
+        )
 
+    # Set of IDs of warehouses and customers
+    factories_id = set(factories.keys()) if factories else set([0])
     warehouses_id = set(warehouses.keys())
     customers_id = set(customers.keys())
 
-    # define variables
+    #################################   Define variables  #######################################
 
     # Customers assignment to warehouses
     if force_single_sourcing:
+        # If force_single_sourcing is True, the customers can be assigned to one and only one warehouse
         assignment_vars = pl.LpVariable.dicts(
             name="Flow",
             indices=[(w, c) for w in warehouses_id for c in customers_id],
@@ -168,6 +184,8 @@ def netopt(
         )
 
     else:
+        # If force_single_sourcing is False, the customers can be assigned to more than one warehouse
+        # In this case, this variable represents the fraction of demand assigned to a warehouse
         assignment_vars = pl.LpVariable.dicts(
             name="Flow",
             indices=[(w, c) for w in warehouses_id for c in customers_id],
@@ -175,6 +193,7 @@ def netopt(
             upBound=1.0,
             cat=pl.LpContinuous,
         )
+
     # Open warehouses
     facility_status_vars = pl.LpVariable.dicts(
         name="Open",
@@ -183,6 +202,8 @@ def netopt(
         upBound=1,
         cat=pl.LpInteger,
     )
+
+    #################################   Calculated parameters  #######################################
 
     # Setting the value to 1 if customer c is within the given high service distance of warehouse w
     if high_service_distance:
@@ -204,7 +225,7 @@ def netopt(
     else:
         max_service_dist_par = {(w, c): 1 for w in warehouses_id for c in customers_id}
 
-    # setting problem objective
+    #################################   Setting problem objective function  #######################################
     if objective == "maxcover":
         # define the objective function (sum of all covered demand within <high_service_dist_par> distance)
         total_covered_demand_high_service = pl.lpSum(
@@ -216,8 +237,10 @@ def netopt(
                 for c in customers_id
             ]
         ) / pl.lpSum([customers[c].demand for c in customers_id])
+
         pb.setObjective(total_covered_demand_high_service)
         plot_options["radius"] = high_service_distance
+
     elif objective == "mindistance":
         # define the objective function (sum of all production costs)
         total_weighted_distance = pl.lpSum(
@@ -227,7 +250,9 @@ def netopt(
                 for c in customers_id
             ]
         ) / pl.lpSum([customers[c].demand for c in customers_id])
+
         pb.setObjective(total_weighted_distance)
+
     elif objective == "mincost":
         total_cost = pl.lpSum(
             [
@@ -253,13 +278,14 @@ def netopt(
         print(f"Objective {objective} not recognized")
         return None
 
-    # set constraints
+    #################################   Setting constraints   #######################################
+    # The demand of each customer must be satisfied by the warehouses
     for c in customers_id:
         pb += pl.LpConstraint(
             e=pl.lpSum([assignment_vars[w, c] for w in warehouses_id]),
             sense=pl.LpConstraintEQ,
             rhs=1,
-            name=f"Customer_{c}_Served",
+            name=f"Customer_{c}_served",
         )
 
     # If the number of warehouse is given, solve a p-median problem,
@@ -269,7 +295,7 @@ def netopt(
             e=pl.lpSum([facility_status_vars[w] for w in warehouses_id]),
             sense=pl.LpConstraintEQ,
             rhs=num_warehouses,
-            name=f"Num_of_active_warehouses",
+            name="Num_of_active_warehouses",
         )
     # else:
     #     pb += pl.LpConstraint(
@@ -363,6 +389,8 @@ def netopt(
 
     print("OK")
 
+    #################################   Solve the model  #######################################
+
     # The problem is solved using PuLP's choice of Solver
     print("SOLVING (time limit = 120 seconds)...", end="")
     _solver = pl.PULP_CBC_CMD(
@@ -380,6 +408,8 @@ def netopt(
             "********* ERROR: Model not solved, time limit probably exceeded (the model is likely too large), don't use the results."
         )
         return None
+
+    #################################   Print and plot results  #######################################
 
     # print objective
     flows = {
@@ -517,6 +547,11 @@ def netopt(
         print()
 
     if plot:
+        # show_geo_map(
+        #     warehouses=warehouses,
+        #     customers=customers,
+        #     flows=flows,
+        # )
         plot_map(
             warehouses=warehouses,
             customers=customers,
@@ -526,6 +561,7 @@ def netopt(
             multi_sourced=multi_sourced,
             hide_flows=hide_flows,
             options=plot_options,
+            plot_size=plot_size,
             **kwargs,
         )
         # plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
@@ -579,6 +615,7 @@ def plot_map(
     options: dict = dict(),
     hide_inactive: bool = False,
     hide_flows: bool = False,
+    plot_size: tuple[int, int] = (8, 12),
     **kwargs,
 ):
     """Plot the network data
@@ -587,7 +624,9 @@ def plot_map(
     :param flows: plot flows between warehouses and customers
     :param active_warehouses: list of warehouses to be plotted as active
     :param hide_inactive: if true, the warehouses not in the active_warehouses list will be hidden
+    :param hide_flows: if true, hide the flows in the plot
     :param multi_sourced: list of customers receiving flows from more than one warehouse. These will be plotted in a different color
+    :param plot_size: size of the plot
     :param warehouse_active_marker: shape of the active warehouse icons; allowed values are s=square, o=circle, *=star, ^=triangle, v=inverted triangle
     :param warehouse_active_markercolor: color of the active warehouse icons. Allowed values are red, green, blue, black, yellow
     :param warehouse_active_markersize: size of the active warehouse icons
@@ -609,12 +648,13 @@ def plot_map(
     if not active_warehouses:
         active_warehouses = []
 
+    fig_x, fig_y = plot_size
     fig, ax = plt.subplots(figsize=(fig_x, fig_y), dpi=dpi)
     # plt.figure(figsize=(fig_x, fig_y), dpi=dpi)
 
     ax.set_aspect("equal")
-    # Check if radius is defined and should be plotted
 
+    # Check if radius is defined and should be plotted
     if radius := options.get("radius", None):
         print(f"PLOTTING RADIUS {radius}...")
         for k, each in warehouses.items():

@@ -17,8 +17,14 @@ import folium
 Warehouse = namedtuple(
     "Warehouse", "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost"
 )
+
 Customer = namedtuple(
     "Customer", "name, city, state, zipcode, latitude, longitude, demand"
+)
+
+Factory = namedtuple(
+    "Factory",
+    "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost",
 )
 
 
@@ -350,7 +356,10 @@ def get_capacity(warehouses: dict) -> float:
 
 
 def show_geo_map(
-    customers: Optional[dict] = None, warehouses: Optional[dict] = None, zoom: int = 8
+    customers: Optional[dict] = None,
+    warehouses: Optional[dict] = None,
+    flows: list | None = None,
+    zoom: int = 8,
 ) -> folium.Map:
     """Show the map with the locations of customers and warehouses (if provided)"""
 
@@ -385,6 +394,24 @@ def show_geo_map(
         map = folium.Map(location=_customers[0]["location"], zoom_start=zoom)
     else:
         map = folium.Map(location=_warehouses[0]["location"], zoom_start=zoom)
+
+    if flows:
+        for each in flows:
+            folium.PolyLine(
+                locations=[
+                    [
+                        _warehouses[each[0]]["location"][0],
+                        _warehouses[each[0]]["location"][1],
+                    ],
+                    [
+                        _customers[each[1]]["location"][0],
+                        _customers[each[1]]["location"][1],
+                    ],
+                ],
+                color="blue",
+                weight=2,
+                opacity=0.5,
+            ).add_to(map)
 
     if _customers:
         for each in _customers:
