@@ -1,30 +1,10 @@
 import ipywidgets as widgets
 from IPython.display import display, clear_output
+from netopt_compat import netopt
 
 
 def parse(txt):
     return eval(txt) if txt.strip() else None
-
-
-def run_netopt(_):
-    with output:
-        clear_output()
-        try:
-            params = {
-                "num_warehouses": num_wh.value,
-                "warehouses": warehouses,
-                "customers": customers,
-                "distance": distance,
-                "distance_ranges": parse(distance_ranges.value),
-                "objective": objective.value,
-            }
-        except Exception as excp:
-            raise excp
-        print("Parameters:", params)
-        # Here you would call your netopt function with the parameters
-        # For example:
-        # result = netopt(num_warehouses=num_wh.value, ...)
-        # print(result)
 
 
 def netopt_ui(warehouses: dict, customers: dict, distance: dict):
@@ -42,8 +22,15 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     # wide_desc = widgets.Layout(width="100%", description_width="150px")
 
     objective = widgets.Dropdown(
-        options=["-", "p-median", "UFLP", "CFLP"],
+        options=[
+            ("-", "-"),
+            ("p-median", "mindistance"),
+            ("p-cover", "maxcover"),
+            ("UFLP", "mincost"),
+            ("CFLP", "mincost"),
+        ],
         description="Problem type",
+        value="-",
         layout=form_layout,
         style=form_style,
     )
@@ -51,7 +38,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     num_wh = widgets.IntSlider(
         description="# Warehouses (for p-median)",
         min=1,
-        max=20,
+        max=len(warehouses.keys()),
         value=3,
         layout=form_layout,
         style=form_style,
@@ -65,6 +52,127 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
         style=form_style,
     )
 
+    plot = widgets.Checkbox(
+        description="Show plot",
+        value=True,
+        layout=form_layout,
+        style=form_style,
+    )
+
+    plot_size = widgets.Text(
+        description="Plot size",
+        value="(8, 12)",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    hide_inactive = widgets.Checkbox(
+        description="Hide inactive facilities",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    force_single_sourcing = widgets.Checkbox(
+        description="Force single sourcing",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    force_uncapacitated = widgets.Checkbox(
+        description="Force uncapacitated",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    ignore_fixed_cost = widgets.Checkbox(
+        description="Ignore fixed cost",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    force_open = widgets.Text(
+        description="Force open",
+        placeholder="[1, 4]",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    force_closed = widgets.Text(
+        description="Force closed",
+        placeholder="[1, 4]",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    force_allocations = widgets.Text(
+        description="Plot size",
+        placeholder="[(1, 4), (2, 2)]",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    warehouse_marker = widgets.Dropdown(
+        options=[
+            ("Square", "s"),
+            ("Circle", "o"),
+            ("Star", "*"),
+            ("Triangle", "^"),
+            ("Inverted Triangle", "v"),
+        ],
+        description="Warehouse marker",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    warehouse_markercolor = widgets.Dropdown(
+        options=["red", "green", "blue", "black", "yellow"],
+        description="Warehouse marker",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    warehouse_markersize = widgets.IntSlider(
+        description="Warehouse marker size",
+        min=1,
+        max=12,
+        value=6,
+        layout=form_layout,
+        style=form_style,
+        # style={"description_width": "initial"},  # Prevents truncation
+    )
+
+    customer_marker = widgets.Dropdown(
+        options=[
+            ("Square", "s"),
+            ("Circle", "o"),
+            ("Star", "*"),
+            ("Triangle", "^"),
+            ("Inverted Triangle", "v"),
+        ],
+        description="Customer marker",
+        value="o",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    customer_markercolor = widgets.Dropdown(
+        options=["red", "green", "blue", "black", "yellow"],
+        description="Customer marker",
+        value="blue",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    customer_markersize = widgets.IntSlider(
+        description="Customer marker size",
+        min=1,
+        max=12,
+        value=4,
+        layout=form_layout,
+        style=form_style,
+        # style={"description_width": "initial"},  # Prevents truncation
+    )
+
     button = widgets.Button(
         description="Solve",
         button_style="success",
@@ -76,6 +184,63 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     #     with output:
     #         print("Button clicked.")
     #         run_netopt()
+    def run_netopt(_):
+        with output:
+            clear_output()
+            try:
+                params = {
+                    "num_warehouses": num_wh.value,
+                    "warehouses": warehouses,
+                    "customers": customers,
+                    "distance": distance,
+                    "plot": plot.value,
+                    "plot_size": parse(plot_size.value) or (8, 12),
+                    "hide_inactive": hide_inactive.value,
+                    "distance_ranges": parse(distance_ranges.value),
+                    "objective": objective.value,
+                    "force_single_sourcing": force_single_sourcing.value,
+                    "force_uncapacitated": force_uncapacitated.value,
+                    "ignore_fixed_cost": ignore_fixed_cost.value,
+                    "force_open": parse(force_open.value),
+                    "force_closed": parse(force_closed.value),
+                    "force_allocations": parse(force_allocations.value),
+                    "warehouse_marker": warehouse_marker.value,
+                    "warehouse_markercolor": warehouse_markercolor.value,
+                    "warehouse_markersize": warehouse_markersize.value,
+                    "customer_marker": customer_marker.value,
+                    "customer_markercolor": customer_markercolor.value,
+                    "customer_markersize": customer_markersize.value,
+                }
+            except Exception as excp:
+                raise excp
+            # print("Parameters:", params)
+            # Here you would call your netopt function with the parameters
+            # For example:
+            result = netopt(
+                num_warehouses=num_wh.value,
+                factories=None,
+                warehouses=warehouses,
+                customers=customers,
+                distance=distance,
+                distance_ranges=params.get("distance_ranges", []),
+                objective="mindistance",
+                plot=plot.value,
+                plot_size=params.get("plot_size", (8, 12)),
+                hide_inactive=hide_inactive.value,
+                force_single_sourcing=params.get("force_single_sourcing", False),
+                force_uncapacitated=params.get("force_uncapacitated", False),
+                ignore_fixed_cost=params.get("ignore_fixed_cost", False),
+                force_open=params.get("force_open"),
+                force_closed=params.get("force_closed"),
+                force_allocations=params.get("force_allocations"),
+                warehouse_marker=params.get("warehouse_marker", "s"),
+                warehouse_markercolor=params.get("warehouse_markercolor", "red"),
+                warehouse_markersize=int(params.get("warehouse_markersize", 6)),
+                customer_marker=params.get("customer_marker", "s"),
+                customer_markercolor=params.get("customer_markercolor", "red"),
+                customer_markersize=int(params.get("customer_markersize", 6)),
+            )
+            print(result)
 
     button.on_click(run_netopt)
 
@@ -90,6 +255,12 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
             objective,
             num_wh,
             distance_ranges,
+            force_single_sourcing,
+            force_uncapacitated,
+            ignore_fixed_cost,
+            force_open,
+            force_closed,
+            force_allocations,
             # warehouses,
             # customers,
             # distance,
@@ -103,6 +274,15 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     sec2 = widgets.VBox(
         [
             widgets.HTML("<h4>Constraints</h4>"),
+            plot,
+            hide_inactive,
+            plot_size,
+            warehouse_marker,
+            warehouse_markercolor,
+            warehouse_markersize,
+            customer_marker,
+            customer_markercolor,
+            customer_markersize,
             # high_sd,
             # avg_sd,
             # max_sd,
