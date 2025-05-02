@@ -1,3 +1,4 @@
+from gc import disable
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 from netopt_compat import netopt
@@ -24,10 +25,10 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     objective = widgets.Dropdown(
         options=[
             ("-", "-"),
-            ("p-median", "mindistance"),
-            ("p-cover", "maxcover"),
-            ("UFLP", "mincost"),
-            ("CFLP", "mincost"),
+            ("p-median", "p-median"),
+            ("p-cover", "p-cover"),
+            ("UFLP", "UFLP"),
+            ("CFLP", "CFLP"),
         ],
         description="Problem type",
         value="-",
@@ -42,6 +43,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
         value=3,
         layout=form_layout,
         style=form_style,
+        disabled=True,
         # style={"description_width": "initial"},  # Prevents truncation
     )
 
@@ -50,6 +52,14 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
         placeholder="[0, 10, 20]",
         layout=form_layout,
         style=form_style,
+    )
+
+    high_service_distance = widgets.FloatText(
+        description="High svc dist",
+        value=1000,
+        layout=form_layout,
+        style=form_style,
+        disabled=True,
     )
 
     plot = widgets.Checkbox(
@@ -180,6 +190,35 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
 
     output = widgets.Output()
 
+    # Function to update widget states based on objective selection
+    def on_objective_change(change):
+        # Enable num_wh only for p-median and p-cover
+        if change["new"] in ["p-median", "p-cover"]:
+            num_wh.disabled = False
+        else:
+            num_wh.disabled = True
+
+        # You can also update other widgets visibility here
+        # For example, show high_service_distance only for p-cover
+        if change["new"] == "p-cover":
+            high_service_distance.disabled = False
+        else:
+            high_service_distance.disabled = True
+
+        # # For UFLP and CFLP, enable/disable appropriate options
+        # if change["new"] == "mincost":
+        #     force_uncapacitated.layout.display = "block"
+        #     ignore_fixed_cost.layout.display = "block"
+        # else:
+        #     force_uncapacitated.layout.display = "none"
+        #     ignore_fixed_cost.layout.display = "none"
+
+    # Register the observer
+    objective.observe(on_objective_change, names="value")
+
+    # Trigger the function once to set initial state
+    on_objective_change({"new": objective.value})
+
     # def on_run(_):
     #     with output:
     #         print("Button clicked.")
@@ -198,6 +237,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                     "hide_inactive": hide_inactive.value,
                     "distance_ranges": parse(distance_ranges.value),
                     "objective": objective.value,
+                    "high_service_distance": high_service_distance.value or None,
                     "force_single_sourcing": force_single_sourcing.value,
                     "force_uncapacitated": force_uncapacitated.value,
                     "ignore_fixed_cost": ignore_fixed_cost.value,
@@ -223,7 +263,8 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                 customers=customers,
                 distance=distance,
                 distance_ranges=params.get("distance_ranges", []),
-                objective="mindistance",
+                objective=params.get("objective", "mindistance"),
+                high_service_distance=params.get("high_service_distance", None),
                 plot=plot.value,
                 plot_size=params.get("plot_size", (8, 12)),
                 hide_inactive=hide_inactive.value,
@@ -240,7 +281,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                 customer_markercolor=params.get("customer_markercolor", "red"),
                 customer_markersize=int(params.get("customer_markersize", 6)),
             )
-            print(result)
+            # print(result)
 
     button.on_click(run_netopt)
 
@@ -251,9 +292,10 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     # Section 1: General parameters
     sec1 = widgets.VBox(
         [
-            widgets.HTML("<h4>General</h4>"),
+            widgets.HTML("<h4>Solver parameters</h4>"),
             objective,
             num_wh,
+            high_service_distance,
             distance_ranges,
             force_single_sourcing,
             force_uncapacitated,
@@ -273,7 +315,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     #     # Section 2: Constraints
     sec2 = widgets.VBox(
         [
-            widgets.HTML("<h4>Constraints</h4>"),
+            widgets.HTML("<h4>Plot</h4>"),
             plot,
             hide_inactive,
             plot_size,

@@ -69,17 +69,18 @@ def create_network_optimizer(
     }
 
     # Create the appropriate optimizer based on objective
-    if objective == "mindistance":
+    if objective == "p-median":
         if not num_warehouses:
             raise ValueError(
                 "num_warehouses must be specified for p-median optimization"
             )
 
+        print("Creating p-median optimizer...")
         optimizer = PMedianOptimizer(
             num_warehouses=num_warehouses, **common_params, **kwargs
         )
 
-    elif objective == "maxcover":
+    elif objective == "p-cover":
         if not num_warehouses:
             raise ValueError(
                 "num_warehouses must be specified for p-cover optimization"
@@ -89,6 +90,7 @@ def create_network_optimizer(
                 "high_service_distance must be specified for p-cover optimization"
             )
 
+        print("Creating p-cover optimizer...")
         optimizer = PCoverOptimizer(
             num_warehouses=num_warehouses,
             high_service_distance=high_service_distance,
@@ -98,24 +100,27 @@ def create_network_optimizer(
             **kwargs,
         )
 
-    elif objective == "mincost":
-        if force_uncapacitated:
-            optimizer = UncapacitatedFLPOptimizer(
-                unit_transport_cost=unit_transport_cost,
-                ignore_fixed_cost=ignore_fixed_cost,
-                **common_params,
-                **kwargs,
-            )
-        else:
-            optimizer = CapacitatedFLPOptimizer(
-                unit_transport_cost=unit_transport_cost,
-                ignore_fixed_cost=ignore_fixed_cost,
-                **common_params,
-                **kwargs,
-            )
+    elif objective == "UFLP":
+        print("Creating uncapacitated FLP optimizer...")
+        optimizer = UncapacitatedFLPOptimizer(
+            unit_transport_cost=unit_transport_cost,
+            ignore_fixed_cost=ignore_fixed_cost,
+            **common_params,
+            **kwargs,
+        )
+
+    elif objective == "CFLP":
+        print("Creating capacitated FLP optimizer...")
+        optimizer = CapacitatedFLPOptimizer(
+            unit_transport_cost=unit_transport_cost,
+            ignore_fixed_cost=ignore_fixed_cost,
+            **common_params,
+            **kwargs,
+        )
+
     else:
         raise ValueError(
-            f"Unknown objective: {objective}. Must be one of: 'mindistance', 'maxcover', 'mincost'"
+            f"Unknown objective: {objective}. Must be one of: 'p-median', 'p-cover', 'UFLP', 'CFLP'."
         )
 
     return optimizer
