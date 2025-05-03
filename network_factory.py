@@ -80,6 +80,7 @@ def create_network_optimizer(
             )
 
         print("Creating p-median optimizer...")
+        print("Model's characteristics:")
         optimizer = PMedianOptimizer(
             objective=objective,
             objective_function=objective_function,
@@ -121,7 +122,7 @@ def create_network_optimizer(
             objective=objective,
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
-            force_uncapacitated=force_uncapacitated,
+            force_single_sourcing=force_single_sourcing,
             **common_params,
             **kwargs,
         )
@@ -132,6 +133,7 @@ def create_network_optimizer(
             objective=objective,
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
+            force_single_sourcing=force_single_sourcing,
             **common_params,
             **kwargs,
         )

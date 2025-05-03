@@ -1,9 +1,20 @@
 from abc import ABC, abstractmethod
-from calendar import c
-import dis
 import pulp as pl
 import pandas as pd
 import matplotlib.pyplot as plt
+
+
+# Define color codes
+class Colors:
+    RESET = "\033[0m"
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    MAGENTA = "\033[95m"
+    CYAN = "\033[96m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 class NetworkOptimizer(ABC):
@@ -103,13 +114,15 @@ class NetworkOptimizer(ABC):
         self._add_mutual_exclusivity_constraints()
         self._add_allocation_constraints()
 
-        # If not forcing uncapacitated, add capacity constraints
-        # if not self.force_uncapacitated:
-        if self.objective == "CFLP":
-            print("Adding capacity constraints...")
+        # Specific constraints for each model type and objective function
+        if self.objective == "CFLP" or (
+            self.objective in ("p-median", "p-cover") and not self.force_uncapacitated
+        ):
+            # print("Adding capacity constraints...")
+            print("- Capacitated model.")
             self._add_capacity_constraints()
         else:
-            print("Uncapacitated model, skipping capacity constraints.")
+            print("- Uncapacitated model.")
 
     def _create_decision_vars(self):
         """Create common decision variables for the model"""
@@ -124,6 +137,7 @@ class NetworkOptimizer(ABC):
 
         # Create assignment variables
         if self.force_single_sourcing:
+            print("- Single sourcing model.")  # using integer variables for assignment
             self.assignment_vars = pl.LpVariable.dicts(
                 name="Flow",
                 indices=[(w, c) for w in self.warehouses_id for c in self.customers_id],
@@ -132,6 +146,9 @@ class NetworkOptimizer(ABC):
                 cat=pl.LpInteger,
             )
         else:
+            print(
+                "- Multi-sourcing model."
+            )  # using continuous variables for assignment
             self.assignment_vars = pl.LpVariable.dicts(
                 name="Flow",
                 indices=[(w, c) for w in self.warehouses_id for c in self.customers_id],
@@ -141,7 +158,8 @@ class NetworkOptimizer(ABC):
             )
 
     def _add_customer_service_constraints(self):
-        """Add constraints ensuring each customer is fully served"""
+        """Add constraints ensuring each customer is fully served
+        Used in all optimization models"""
         for c in self.customers_id:
             self.model += pl.LpConstraint(
                 e=pl.lpSum([self.assignment_vars[w, c] for w in self.warehouses_id]),
@@ -151,7 +169,8 @@ class NetworkOptimizer(ABC):
             )
 
     def _add_logical_constraints(self):
-        """Add logical constraints linking assignment and facility variables"""
+        """Add logical constraints linking assignment and facility variables
+        Used in all optimization models"""
         for w in self.warehouses_id:
             for c in self.customers_id:
                 self.model += pl.LpConstraint(
@@ -178,7 +197,9 @@ class NetworkOptimizer(ABC):
                 )
 
     def _add_warehouse_force_constraints(self):
-        """Add constraints for forcing warehouses open or closed"""
+        """Add constraints for forcing warehouses open or closed
+        Used in all optimization models"""
+
         # Force open warehouses
         for w in self.force_open:
             try:
@@ -194,7 +215,9 @@ class NetworkOptimizer(ABC):
                 print(f"Warehouse {w} does not exist")
 
     def _add_mutual_exclusivity_constraints(self):
-        """Add constraints for mutually exclusive warehouses"""
+        """Add constraints for mutually exclusive warehouses
+        Used in all optimization models"""
+
         if self.mutually_exclusive:
             for seq in self.mutually_exclusive:
                 self.model += pl.LpConstraint(
@@ -205,7 +228,8 @@ class NetworkOptimizer(ABC):
                 )
 
     def _add_allocation_constraints(self):
-        """Add constraints for forced allocations"""
+        """Add constraints for forced allocations
+        Used in all optimization models"""
         if self.force_allocations:
             try:
                 for each in self.force_allocations:
@@ -229,6 +253,7 @@ class NetworkOptimizer(ABC):
         Returns:
             Solution dictionary or None if infeasible
         """
+        print()
         print("SOLVING (time limit = 120 seconds)...", end="")
         _solver = pl.PULP_CBC_CMD(
             keepFiles=False, gapRel=0.00, timeLimit=time_limit, msg=solver_log
@@ -236,12 +261,19 @@ class NetworkOptimizer(ABC):
         self.model.solve(solver=_solver)
         print("OK")
 
-        print("Optimization Status: ", pl.LpStatus[self.model.status])
-        if pl.LpStatus[self.model.status] == "Infeasible":
-            print("********* ERROR: Model not feasible, don't use the results.")
+        if pl.LpStatus[self.model.status] == "Optimal":
+            print(
+                f"==> Optimization Status: {Colors.GREEN}{Colors.BOLD}{pl.LpStatus[self.model.status]} {Colors.RESET}<==",
+            )
+        elif pl.LpStatus[self.model.status] == "Infeasible":
+            print(
+                f"{Colors.RED}{Colors.BOLD}********* ERROR: Model not feasible, don't use the results. ********* {Colors.RESET}"
+            )
             return None
         elif pl.LpStatus[self.model.status] == "Not Solved":
-            print("********* ERROR: Model not solved, time limit probably exceeded.")
+            print(
+                f"{Colors.RED}{Colors.BOLD}********* ERROR: Model not solved, time limit probably exceeded. ********* {Colors.RESET}"
+            )
             return None
 
         # Extract solution
@@ -466,6 +498,7 @@ class PMedianOptimizer(NetworkOptimizer):
         customers: dict,
         distance: dict,
         force_uncapacitated: bool = False,
+        force_single_sourcing: bool = True,
         unit_transport_cost: float = 0.1,
         ignore_fixed_cost: bool = True,
         **kwargs,
@@ -485,6 +518,7 @@ class PMedianOptimizer(NetworkOptimizer):
             customers=customers,
             distance=distance,
             force_uncapacitated=force_uncapacitated,
+            force_single_sourcing=force_single_sourcing,
             **kwargs,
         )
         self.num_warehouses = num_warehouses
@@ -517,7 +551,7 @@ class PMedianOptimizer(NetworkOptimizer):
     def set_objective(self):
         """Set the P-Median objective function"""
         if self.objective_function == "mindistance":
-            print("Objective function: minimize distance")
+            print("- Objective function: minimize distance")
             # Minimize total weighted distance
             obj_func = pl.lpSum(
                 [
@@ -529,7 +563,7 @@ class PMedianOptimizer(NetworkOptimizer):
                 ]
             ) / pl.lpSum([self.customers[c].demand for c in self.customers_id])
         elif self.objective_function == "mincost":
-            print("Objective function: minimize total cost")
+            print("- Objective function: minimize total cost")
             # Minimize total cost (fixed + transportation)
             obj_func = pl.lpSum(
                 [
@@ -543,12 +577,15 @@ class PMedianOptimizer(NetworkOptimizer):
             )
             if not self.ignore_fixed_cost:
                 # Include fixed costs if not explicitly ignored
+                print("Include warehouses' fixed costs")
                 obj_func += pl.lpSum(
                     [
                         self.warehouses[w].fixed_cost * self.facility_status_vars[w]
                         for w in self.warehouses_id
                     ]
                 )
+            else:
+                print("Ignore warehouses' fixed costs")
         else:
             raise ValueError(
                 f"Unknown objective function: {self.objective_function}. Must be 'mindistance' or 'mincost'."
@@ -733,6 +770,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
         distance: dict,
         unit_transport_cost: float = 0.1,
         ignore_fixed_cost: bool = False,
+        force_single_sourcing: bool = True,
         **kwargs,
     ):
         """Initialize Uncapacitated FLP optimizer
@@ -752,6 +790,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
             warehouses=warehouses,
             customers=customers,
             distance=distance,
+            force_single_sourcing=force_single_sourcing,
             **kwargs,
         )
         self.unit_transport_cost = unit_transport_cost
@@ -847,6 +886,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
         distance: dict,
         unit_transport_cost: float = 0.1,
         ignore_fixed_cost: bool = False,
+        force_single_sourcing: bool = True,
         **kwargs,
     ):
         """Initialize Capacitated FLP optimizer
@@ -868,6 +908,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
             distance=distance,
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
+            force_single_sourcing=force_single_sourcing,
             **kwargs,
         )
 

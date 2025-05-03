@@ -228,7 +228,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
 
         if change["new"] == "p-median":
             objective_function.disabled = False
-            ignore_fixed_cost.value = True
+            # ignore_fixed_cost.value = True
         else:
             objective_function.disabled = True
             objective_function.value = "mindistance"
