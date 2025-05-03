@@ -1,6 +1,7 @@
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 from netopt_compat import netopt
+# from data_structures import Warehouse, Customer
 
 
 def parse(txt):
@@ -416,3 +417,506 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     ui = widgets.HBox([sec1, sec2])
 
     display(ui, button, output)
+
+
+def edit_warehouse(warehouses: dict, warehouse_id: int) -> dict:
+    """Edit a warehouse in the warehouses dictionary."""
+
+    warehouse = warehouses.get(warehouse_id, None)
+    if not warehouse:
+        print(f"Warehouse {warehouse_id} not found.")
+        return warehouses
+
+    # Define a consistent layout for all form elements
+    form_layout = widgets.Layout(
+        width="50%"  # Full width for the widget itself
+    )
+
+    # Define a consistent style for all form elements
+    form_style = {"description_width": "200px"}  # Fixed width for all descriptions
+
+    warehouse_name = widgets.Text(
+        description="Warehouse name",
+        value=warehouse.name,
+        disabled=True,
+        layout=form_layout,
+        style=form_style,
+    )
+
+    w_id = widgets.IntText(
+        description="Warehouse ID",
+        value=warehouse_id,
+        disabled=True,
+        layout=form_layout,
+        style=form_style,
+    )
+
+    capacity = widgets.Text(
+        description="Capacity",
+        value=str(warehouse.capacity),
+        layout=form_layout,
+        style=form_style,
+    )
+
+    fixed_cost = widgets.Text(
+        description="Fixed cost",
+        value=str(warehouse.fixed_cost),
+        layout=form_layout,
+        style=form_style,
+    )
+
+    button = widgets.Button(
+        description="Update",
+        button_style="success",
+    )
+
+    output = widgets.Output()
+
+    # Create a container for all widgets
+    container = widgets.VBox(
+        [
+            widgets.HTML("<h3>Edit Warehouse</h3>"),
+            warehouse_name,
+            w_id,
+            capacity,
+            fixed_cost,
+            button,
+            output,
+        ]
+    )
+
+    # Display with ID for later clearing
+    display_handle = display(container, display_id="edit_warehouse_form")
+
+    # display(warehouse_name, w_id, capacity, fixed_cost, output, button)
+
+    def update_warehouse(_):
+        with output:
+            clear_output()
+            try:
+                old_data = warehouses.get(warehouse_id, None)
+                from data_structures import Warehouse
+
+                warehouses[warehouse_id] = Warehouse(
+                    name=old_data.name,
+                    city=old_data.city,
+                    state=old_data.state,
+                    zipcode=old_data.zipcode,
+                    latitude=old_data.latitude,
+                    longitude=old_data.longitude,
+                    capacity=parse(capacity.value) or old_data.capacity,
+                    fixed_cost=parse(fixed_cost.value) or old_data.fixed_cost,
+                )
+
+                print(f"Warehouse {warehouse_id} updated successfully.")
+
+                # Add a clear button
+                close_button = widgets.Button(
+                    description="Close form",
+                    button_style="info",
+                )
+
+                def clear_form(_):
+                    # Clear form by replacing it with an empty widget
+                    display(widgets.HTML(""), display_id="edit_warehouse_form")
+
+                close_button.on_click(clear_form)
+                display(close_button)
+
+                # display(widgets.HTML(""), display_id="edit_warehouse_form")
+
+            except Exception as excp:
+                print(f"Error updating warehouse: {excp}")
+                raise excp
+
+    button.on_click(update_warehouse)
+
+
+def add_warehouse(warehouses: dict) -> dict:
+    """Add a new warehouse to the warehouses dictionary."""
+
+    # Calculate next available warehouse ID
+    next_id = max(warehouses.keys()) + 1 if warehouses else 1
+
+    # Define a consistent layout for all form elements
+    form_layout = widgets.Layout(
+        width="50%"  # Half width for the widget itself
+    )
+
+    # Define a consistent style for all form elements
+    form_style = {"description_width": "200px"}  # Fixed width for all descriptions
+
+    warehouse_name = widgets.Text(
+        description="Warehouse name",
+        placeholder="Insert a unique name (can be the same as city)",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    w_id = widgets.IntText(
+        description="Warehouse ID",
+        value=next_id,
+        disabled=True,
+        layout=form_layout,
+        style=form_style,
+    )
+
+    city = widgets.Text(
+        description="City",
+        placeholder="Insert the city name",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    state = widgets.Text(
+        description="State",
+        placeholder="Insert the state or country name",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    zipcode = widgets.Text(
+        description="Zip code (optional)",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    latitude = widgets.FloatText(
+        description="Latitude",
+        placeholder="40.7128",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    longitude = widgets.FloatText(
+        description="Longitude",
+        placeholder="-74.0060",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    capacity = widgets.Text(
+        description="Capacity",
+        value="None",
+        placeholder="Insert the capacity",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    fixed_cost = widgets.Text(
+        description="Fixed cost",
+        value="Insert the fixed cost",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    use_geocoding = widgets.Checkbox(
+        description="Use geocoding to find coordinates",
+        value=False,
+        layout=form_layout,
+        style=form_style,
+    )
+
+    button = widgets.Button(
+        description="Add Warehouse",
+        button_style="success",
+    )
+
+    output = widgets.Output()
+
+    # Create a container for all widgets
+    container = widgets.VBox(
+        [
+            widgets.HTML("<h3>Add New Warehouse</h3>"),
+            w_id,
+            warehouse_name,
+            city,
+            state,
+            zipcode,
+            latitude,
+            longitude,
+            capacity,
+            fixed_cost,
+            use_geocoding,
+            button,
+            output,
+        ]
+    )
+
+    # Display with ID for later clearing
+    display_handle = display(container, display_id="add_warehouse_form")
+
+    # Function to lookup coordinates if requested
+    def lookup_coordinates(city_name, state_name):
+        from netopt import get_city_coords
+
+        location = f"{city_name}, {state_name}"
+        lat, lon = get_city_coords(location)
+
+        if lat is None or lon is None:
+            return None, None
+        return lat, lon
+
+    # Update function for geocoding checkbox
+    def on_geocoding_change(change):
+        if change["new"]:
+            latitude.disabled = True
+            longitude.disabled = True
+        else:
+            latitude.disabled = False
+            longitude.disabled = False
+
+    use_geocoding.observe(on_geocoding_change, names="value")
+
+    def add_new_warehouse(_):
+        with output:
+            clear_output()
+            try:
+                # Validate required fields
+                if not warehouse_name.value:
+                    print("Error: Warehouse name is required")
+                    return
+
+                if not city.value:
+                    print("Error: City is required")
+                    return
+
+                if not state.value:
+                    print("Error: State is required")
+                    return
+
+                # Get coordinates either from inputs or geocoding
+                lat, lon = None, None
+                if use_geocoding.value:
+                    print(f"Looking up coordinates for {city.value}, {state.value}...")
+                    lat, lon = lookup_coordinates(city.value, state.value)
+                    if lat is None or lon is None:
+                        print(
+                            f"Error: Could not find coordinates for {city.value}, {state.value}"
+                        )
+                        print("Please enter coordinates manually")
+                        return
+                    print(f"Found coordinates: {lat}, {lon}")
+                else:
+                    if latitude.value is None or longitude.value is None:
+                        print("Error: Latitude and longitude are required")
+                        return
+                    lat, lon = latitude.value, longitude.value
+
+                # Create new warehouse
+                from data_structures import Warehouse
+
+                new_warehouse = Warehouse(
+                    name=warehouse_name.value,
+                    city=city.value,
+                    state=state.value,
+                    zipcode=zipcode.value,
+                    latitude=lat,
+                    longitude=lon,
+                    capacity=parse(capacity.value),
+                    fixed_cost=parse(fixed_cost.value) or 0,
+                )
+
+                # Add to warehouses dictionary
+                warehouses[w_id.value] = new_warehouse
+
+                print(
+                    f"Warehouse {w_id.value} ({warehouse_name.value}) added successfully."
+                )
+                print(f"Location: {city.value}, {state.value} ({lat}, {lon})")
+                print(f"Capacity: {parse(capacity.value) or 'Unlimited'}")
+                print(f"Fixed cost: {parse(fixed_cost.value) or 1000}")
+
+                # Add a clear button
+                close_button = widgets.Button(
+                    description="Clear Form",
+                    button_style="info",
+                )
+
+                def clear_form(_):
+                    # Clear form by replacing it with an empty widget
+                    display(widgets.HTML(""), display_id="add_warehouse_form")
+
+                close_button.on_click(clear_form)
+                display(close_button)
+
+            except Exception as excp:
+                print(f"Error adding warehouse: {excp}")
+                raise excp
+
+    button.on_click(add_new_warehouse)
+
+    return warehouses
+
+
+def delete_warehouse(warehouses: dict) -> dict:
+    """Delete a warehouse from the warehouses dictionary."""
+
+    # Define a consistent layout for all form elements
+    form_layout = widgets.Layout(
+        width="50%"  # Half width for the widget itself
+    )
+
+    # Define a consistent style for all form elements
+    form_style = {"description_width": "200px"}  # Fixed width for all descriptions
+
+    # Create a dropdown with all available warehouses
+    warehouse_options = [(f"{w_id}: {w.name}", w_id) for w_id, w in warehouses.items()]
+
+    warehouse_selector = widgets.Dropdown(
+        options=warehouse_options,
+        description="Select warehouse",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    # Preview area for selected warehouse info
+    preview = widgets.Output()
+
+    # Button to confirm deletion
+    delete_button = widgets.Button(
+        description="Delete Warehouse",
+        button_style="danger",  # Red button to indicate destructive action
+        disabled=False,
+    )
+
+    # Cancel button
+    cancel_button = widgets.Button(
+        description="Cancel",
+        button_style="info",
+    )
+
+    # Output area for status messages
+    output = widgets.Output()
+
+    # Create a container for all widgets
+    container = widgets.VBox(
+        [
+            widgets.HTML("<h3>Delete Warehouse</h3>"),
+            widgets.HTML(
+                "<p>Select a warehouse to delete and confirm your selection.</p>"
+            ),
+            warehouse_selector,
+            preview,
+            widgets.HBox([delete_button, cancel_button]),
+            output,
+        ]
+    )
+
+    # Display with ID for later clearing
+    display_handle = display(container, display_id="delete_warehouse_form")
+
+    # Update preview when selection changes
+    def update_preview(change):
+        with preview:
+            clear_output()
+            if change["new"] is None:
+                print("No warehouse selected")
+                delete_button.disabled = True
+                return
+
+            w_id = change["new"]
+            warehouse = warehouses.get(w_id)
+
+            if warehouse:
+                print(f"ID: {w_id}")
+                print(f"Name: {warehouse.name}")
+                print(f"Location: {warehouse.city}, {warehouse.state}")
+                print(f"Coordinates: ({warehouse.latitude}, {warehouse.longitude})")
+                print(f"Capacity: {warehouse.capacity or 'Unlimited'}")
+                print(f"Fixed Cost: {warehouse.fixed_cost}")
+                delete_button.disabled = False
+            else:
+                print("Warehouse not found")
+                delete_button.disabled = True
+
+    warehouse_selector.observe(update_preview, names="value")
+
+    # Trigger initial preview update
+    if warehouse_options:
+        with preview:
+            w_id = warehouse_selector.value
+            warehouse = warehouses.get(w_id)
+            if warehouse:
+                print(f"ID: {w_id}")
+                print(f"Name: {warehouse.name}")
+                print(f"Location: {warehouse.city}, {warehouse.state}")
+                print(f"Coordinates: ({warehouse.latitude}, {warehouse.longitude})")
+                print(f"Capacity: {warehouse.capacity or 'Unlimited'}")
+                print(f"Fixed Cost: {warehouse.fixed_cost}")
+    else:
+        with preview:
+            print("No warehouses available")
+            delete_button.disabled = True
+
+    # Delete function
+    def confirm_delete(_):
+        with output:
+            clear_output()
+            w_id = warehouse_selector.value
+
+            if w_id is None:
+                print("No warehouse selected")
+                return
+
+            try:
+                warehouse = warehouses.get(w_id)
+                if warehouse:
+                    warehouse_name = warehouse.name
+                    # Delete the warehouse
+                    del warehouses[w_id]
+                    print(f"Warehouse {w_id} ({warehouse_name}) deleted successfully.")
+
+                    # Update the dropdown options
+                    new_options = [
+                        (f"{w_id}: {w.name}", w_id) for w_id, w in warehouses.items()
+                    ]
+                    warehouse_selector.options = new_options
+
+                    # Clear the preview
+                    with preview:
+                        clear_output()
+                        if new_options:
+                            w_id = warehouse_selector.value
+                            warehouse = warehouses.get(w_id)
+                            if warehouse:
+                                print(f"ID: {w_id}")
+                                print(f"Name: {warehouse.name}")
+                                print(f"Location: {warehouse.city}, {warehouse.state}")
+                                print(
+                                    f"Coordinates: ({warehouse.latitude}, {warehouse.longitude})"
+                                )
+                                print(f"Capacity: {warehouse.capacity or 'Unlimited'}")
+                                print(f"Fixed Cost: {warehouse.fixed_cost}")
+                        else:
+                            print("No warehouses available")
+                            delete_button.disabled = True
+                else:
+                    print(f"Error: Warehouse {w_id} not found")
+
+                # Add a close button
+                close_button = widgets.Button(
+                    description="Close Form",
+                    button_style="info",
+                )
+
+                def clear_form(_):
+                    # Clear form by replacing it with an empty widget
+                    display(widgets.HTML(""), display_id="delete_warehouse_form")
+
+                close_button.on_click(clear_form)
+                display(close_button)
+
+            except Exception as excp:
+                print(f"Error deleting warehouse: {excp}")
+                raise excp
+
+    # Cancel function
+    def cancel_delete(_):
+        display(widgets.HTML(""), display_id="delete_warehouse_form")
+
+    # Connect button handlers
+    delete_button.on_click(confirm_delete)
+    cancel_button.on_click(cancel_delete)
+
+    return warehouses
