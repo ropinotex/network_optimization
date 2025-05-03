@@ -241,6 +241,14 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
             high_service_distance.disabled = True
             high_service_distance.value = 0
 
+        if change["new"] == "UFLP":
+            force_uncapacitated.value = True
+            force_uncapacitated.disabled = True
+
+        if change["new"] == "CFLP":
+            force_uncapacitated.value = False
+            force_uncapacitated.disabled = True
+
         # # For UFLP and CFLP, enable/disable appropriate options
         # if change["new"] == "mincost":
         #     force_uncapacitated.layout.display = "block"
