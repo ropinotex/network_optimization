@@ -716,27 +716,6 @@ def plot_map(
                 linewidth=0.3,
             )
 
-    # Plot warehouses
-    if warehouses:
-        for k, each in warehouses.items():
-            if k in active_warehouses:
-                plt.plot(
-                    each.longitude,
-                    each.latitude,
-                    marker=kwargs.get("warehouse_active_marker", "v"),
-                    color=kwargs.get("warehouse_active_markercolor", "green"),
-                    markersize=kwargs.get("warehouse_active_markersize", 5),
-                )
-            else:
-                if not hide_inactive:
-                    plt.plot(
-                        each.longitude,
-                        each.latitude,
-                        marker=kwargs.get("warehouse_marker", "s"),
-                        color=kwargs.get("warehouse_markercolor", "red"),
-                        markersize=kwargs.get("warehouse_markersize", 4),
-                    )
-
     # Plot customers
     if customers:
         for c_id, each in customers.items():
@@ -757,6 +736,27 @@ def plot_map(
                     color=kwargs.get("customer_markercolor", "blue"),
                     markersize=kwargs.get("customer_markersize", 4),
                 )
+
+    # Plot warehouses
+    if warehouses:
+        for k, each in warehouses.items():
+            if k in active_warehouses:
+                plt.plot(
+                    each.longitude,
+                    each.latitude,
+                    marker=kwargs.get("warehouse_active_marker", "v"),
+                    color=kwargs.get("warehouse_active_markercolor", "green"),
+                    markersize=kwargs.get("warehouse_active_markersize", 5),
+                )
+            else:
+                if not hide_inactive:
+                    plt.plot(
+                        each.longitude,
+                        each.latitude,
+                        marker=kwargs.get("warehouse_marker", "s"),
+                        color=kwargs.get("warehouse_markercolor", "red"),
+                        markersize=kwargs.get("warehouse_markersize", 4),
+                    )
 
     # Remove axes
     plt.gca().axes.get_xaxis().set_visible(False)

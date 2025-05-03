@@ -228,6 +228,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
 
         if change["new"] == "p-median":
             objective_function.disabled = False
+            force_uncapacitated.disabled = False
             # ignore_fixed_cost.value = True
         else:
             objective_function.disabled = True

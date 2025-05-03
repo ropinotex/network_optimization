@@ -454,6 +454,21 @@ class NetworkOptimizer(ABC):
 
         print(f"\nTotal outflow: {total_outflow:.0f} units")
 
+        # Check capacity utilization
+        print("\nWarehouse capacity utilization:")
+        for w in self.active_warehouses:
+            if hasattr(self.warehouses[w], "capacity") and self.warehouses[w].capacity:
+                usage = sum(
+                    [
+                        self.customers[c].demand * self.assignment_vars[w, c].varValue
+                        for c in self.customers_id
+                    ]
+                )
+                utilization = (usage / self.warehouses[w].capacity) * 100
+                print(
+                    f"Warehouse {w}: {round(utilization, 1)}% ({int(usage)}/{self.warehouses[w].capacity})"
+                )
+
         # Print demand percentages by distance range
         if "demand_perc_by_ranges" in self.solution:
             print("\nDemand coverage by distance:")
@@ -577,7 +592,7 @@ class PMedianOptimizer(NetworkOptimizer):
             )
             if not self.ignore_fixed_cost:
                 # Include fixed costs if not explicitly ignored
-                print("Include warehouses' fixed costs")
+                print("- Include warehouses' fixed costs")
                 obj_func += pl.lpSum(
                     [
                         self.warehouses[w].fixed_cost * self.facility_status_vars[w]
@@ -585,7 +600,7 @@ class PMedianOptimizer(NetworkOptimizer):
                     ]
                 )
             else:
-                print("Ignore warehouses' fixed costs")
+                print("- Ignore warehouses' fixed costs")
         else:
             raise ValueError(
                 f"Unknown objective function: {self.objective_function}. Must be 'mindistance' or 'mincost'."
@@ -947,19 +962,19 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
             print("Forced ignoring fixed cost")
 
         # Check capacity utilization
-        print("\nWarehouse capacity utilization:")
-        for w in self.active_warehouses:
-            if hasattr(self.warehouses[w], "capacity") and self.warehouses[w].capacity:
-                usage = sum(
-                    [
-                        self.customers[c].demand * self.assignment_vars[w, c].varValue
-                        for c in self.customers_id
-                    ]
-                )
-                utilization = (usage / self.warehouses[w].capacity) * 100
-                print(
-                    f"Warehouse {w}: {round(utilization, 1)}% ({round(usage, 0)}/{self.warehouses[w].capacity})"
-                )
+        # print("\nWarehouse capacity utilization:")
+        # for w in self.active_warehouses:
+        #     if hasattr(self.warehouses[w], "capacity") and self.warehouses[w].capacity:
+        #         usage = sum(
+        #             [
+        #                 self.customers[c].demand * self.assignment_vars[w, c].varValue
+        #                 for c in self.customers_id
+        #             ]
+        #         )
+        #         utilization = (usage / self.warehouses[w].capacity) * 100
+        #         print(
+        #             f"Warehouse {w}: {round(utilization, 1)}% ({int(usage)}/{self.warehouses[w].capacity})"
+        #         )
 
         # Print common solution details from NetworkOptimizer (skip UncapacitatedFLP)
         NetworkOptimizer.print_solution_details(self)
