@@ -4,7 +4,11 @@ from netopt_compat import netopt
 
 
 def parse(txt):
-    return eval(txt) if txt.strip() else None
+    try:
+        return eval(txt) if txt.strip() else None
+    except Exception as excp:
+        print(f"Error parsing input: {excp}")
+        raise excp
 
 
 def netopt_ui(warehouses: dict, customers: dict, distance: dict):
@@ -23,16 +27,27 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
 
     objective = widgets.Dropdown(
         options=[
-            ("-", "-"),
             ("p-median", "p-median"),
             ("p-cover", "p-cover"),
             ("UFLP", "UFLP"),
             ("CFLP", "CFLP"),
         ],
         description="Problem type",
-        value="-",
+        value="p-median",
         layout=form_layout,
         style=form_style,
+    )
+
+    objective_function = widgets.Dropdown(
+        options=[
+            ("Minimize AWD", "mindistance"),
+            ("Minimize total cost", "mincost"),
+        ],
+        description="Func. to minimize (for p-median)",
+        value="mindistance",
+        layout=form_layout,
+        style=form_style,
+        disabled=True,
     )
 
     num_wh = widgets.IntSlider(
@@ -54,7 +69,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     )
 
     high_service_distance = widgets.FloatText(
-        description="High svc dist",
+        description="Service radius (R for p-cover)",
         value=1000,
         layout=form_layout,
         style=form_style,
@@ -211,12 +226,20 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
         else:
             num_wh.disabled = True
 
+        if change["new"] == "p-median":
+            objective_function.disabled = False
+            ignore_fixed_cost.value = True
+        else:
+            objective_function.disabled = True
+            objective_function.value = "mindistance"
+
         # You can also update other widgets visibility here
         # For example, show high_service_distance only for p-cover
         if change["new"] == "p-cover":
             high_service_distance.disabled = False
         else:
             high_service_distance.disabled = True
+            high_service_distance.value = 0
 
         # # For UFLP and CFLP, enable/disable appropriate options
         # if change["new"] == "mincost":
@@ -248,17 +271,18 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                     "plot": plot.value,
                     "plot_size": parse(plot_size.value) or (8, 12),
                     "hide_inactive": hide_inactive.value,
-                    "distance_ranges": parse(distance_ranges.value),
+                    "distance_ranges": parse(distance_ranges.value) or [],
                     "objective": objective.value,
+                    "objective_function": objective_function.value,
                     "unit_transport_cost": unit_transport_cost.value,
                     "high_service_distance": high_service_distance.value or None,
                     "force_single_sourcing": force_single_sourcing.value,
                     "force_uncapacitated": force_uncapacitated.value,
                     "ignore_fixed_cost": ignore_fixed_cost.value,
-                    "force_open": parse(force_open.value),
-                    "force_closed": parse(force_closed.value),
-                    "force_allocations": parse(force_allocations.value),
-                    "mutually_exclusive": parse(mutually_exclusive.value),
+                    "force_open": parse(force_open.value) or [],
+                    "force_closed": parse(force_closed.value) or [],
+                    "force_allocations": parse(force_allocations.value) or [],
+                    "mutually_exclusive": parse(mutually_exclusive.value) or [],
                     "warehouse_marker": warehouse_marker.value,
                     "warehouse_markercolor": warehouse_markercolor.value,
                     "warehouse_markersize": warehouse_markersize.value,
@@ -271,6 +295,25 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
             # print("Parameters:", params)
             # Here you would call your netopt function with the parameters
             # For example:
+            if not isinstance(params.get("force_open"), list):
+                print("force_open must be a list")
+                return
+            if not isinstance(params.get("force_closed"), list):
+                print("force_closed must be a list")
+                return
+            if not isinstance(params.get("force_allocations"), list):
+                print("force_allocations must be a list")
+                return
+            if not isinstance(params.get("mutually_exclusive"), list):
+                print("mutually_exclusive must be a list")
+                return
+            if not isinstance(params.get("distance_ranges"), list):
+                print("distance_ranges must be a list")
+                return
+            if not isinstance(params.get("plot_size"), tuple):
+                print("plot_size must be a tuple")
+                return
+
             result = netopt(
                 num_warehouses=num_wh.value,
                 factories=None,
@@ -279,6 +322,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                 distance=distance,
                 distance_ranges=params.get("distance_ranges", []),
                 objective=params.get("objective", "p-median"),
+                objective_function=params.get("objective_function", "mindistance"),
                 high_service_distance=params.get("high_service_distance", None),
                 unit_transport_cost=params.get("unit_transport_cost", 0.1),
                 mutually_exclusive=params.get("mutually_exclusive", []),
@@ -312,6 +356,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
             widgets.HTML("<h4>Solver parameters</h4>"),
             objective,
             num_wh,
+            objective_function,
             high_service_distance,
             distance_ranges,
             force_single_sourcing,

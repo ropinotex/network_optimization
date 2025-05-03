@@ -380,6 +380,7 @@ class NetworkOptimizer(ABC):
 
     def print_solution_details(self):
         """Print detailed information about the solution"""
+        print("=" * 40)
         if not self.solution:
             print("No solution available. Please solve the model first.")
             return
@@ -428,7 +429,7 @@ class NetworkOptimizer(ABC):
                 "demand_perc_by_ranges"
             ].items():
                 print(
-                    f"% of demand in range {lower:5} - {upper:5}: {round(percentage * 100, 1):>3}"
+                    f"% of demand in range {lower:5} - {upper:5}: {round(percentage * 100, 1):4}%"
                 )
 
         # Print distance statistics
@@ -459,10 +460,14 @@ class PMedianOptimizer(NetworkOptimizer):
     def __init__(
         self,
         objective: str,
+        objective_function: str,
         num_warehouses: int,
         warehouses: dict,
         customers: dict,
         distance: dict,
+        force_uncapacitated: bool = False,
+        unit_transport_cost: float = 0.1,
+        ignore_fixed_cost: bool = True,
         **kwargs,
     ):
         """Initialize P-Median optimizer
@@ -479,9 +484,15 @@ class PMedianOptimizer(NetworkOptimizer):
             warehouses=warehouses,
             customers=customers,
             distance=distance,
+            force_uncapacitated=force_uncapacitated,
             **kwargs,
         )
         self.num_warehouses = num_warehouses
+        self.objective_function = objective_function  # The objective_function is used only with the p-median model
+        self.unit_transport_cost = (
+            unit_transport_cost  # Default transport cost per unit per distance
+        )
+        self.ignore_fixed_cost = ignore_fixed_cost
 
     def build_model(self, is_maximization: bool = False):
         """Build the P-Median optimization model
@@ -505,29 +516,66 @@ class PMedianOptimizer(NetworkOptimizer):
 
     def set_objective(self):
         """Set the P-Median objective function"""
-        # Minimize total weighted distance
-        total_weighted_distance = pl.lpSum(
-            [
-                self.customers[c].demand
-                * self.distance[w, c]
-                * self.assignment_vars[w, c]
-                for w in self.warehouses_id
-                for c in self.customers_id
-            ]
-        ) / pl.lpSum([self.customers[c].demand for c in self.customers_id])
-
-        self.model.setObjective(total_weighted_distance)
+        if self.objective_function == "mindistance":
+            print("Objective function: minimize distance")
+            # Minimize total weighted distance
+            obj_func = pl.lpSum(
+                [
+                    self.customers[c].demand
+                    * self.distance[w, c]
+                    * self.assignment_vars[w, c]
+                    for w in self.warehouses_id
+                    for c in self.customers_id
+                ]
+            ) / pl.lpSum([self.customers[c].demand for c in self.customers_id])
+        elif self.objective_function == "mincost":
+            print("Objective function: minimize total cost")
+            # Minimize total cost (fixed + transportation)
+            obj_func = pl.lpSum(
+                [
+                    self.customers[c].demand
+                    * self.distance[w, c]
+                    * self.assignment_vars[w, c]
+                    * self.unit_transport_cost
+                    for w in self.warehouses_id
+                    for c in self.customers_id
+                ]
+            )
+            if not self.ignore_fixed_cost:
+                # Include fixed costs if not explicitly ignored
+                obj_func += pl.lpSum(
+                    [
+                        self.warehouses[w].fixed_cost * self.facility_status_vars[w]
+                        for w in self.warehouses_id
+                    ]
+                )
+        else:
+            raise ValueError(
+                f"Unknown objective function: {self.objective_function}. Must be 'mindistance' or 'mincost'."
+            )
+        # print(obj_func)
+        self.model.setObjective(obj_func)
 
     def print_solution_details(self):
         """Print P-Median specific solution details"""
         if not self.solution:
             print("No solution available. Please solve the model first.")
             return
-
+        print("=" * 40)
         print("P-Median optimization results:")
-        print(
-            f"Average weighted distance: {round(self.solution['objective_value'], 1)}"
-        )
+        if self.objective_function == "mindistance":
+            print(
+                f"Average weighted distance: {int(self.solution['objective_value'])} km"
+            )
+        elif self.objective_function == "mincost":
+            if self.ignore_fixed_cost:
+                print(
+                    f"Minimum total cost (transportation only): {int(self.solution['objective_value'])}"
+                )
+            else:
+                print(
+                    f"Minimum total cost (fixed + transportation): {int(self.solution['objective_value'])}"
+                )
 
         # Print common solution details
         super().print_solution_details()
@@ -549,6 +597,7 @@ class PCoverOptimizer(NetworkOptimizer):
         high_service_distance: float,
         avg_service_distance: float = None,
         max_service_distance: float = None,
+        force_uncapacitated: bool = False,
         **kwargs,
     ):
         """Initialize P-Cover optimizer
@@ -568,6 +617,7 @@ class PCoverOptimizer(NetworkOptimizer):
             warehouses=warehouses,
             customers=customers,
             distance=distance,
+            force_uncapacitated=force_uncapacitated,
             **kwargs,
         )
         self.num_warehouses = num_warehouses

@@ -9,14 +9,15 @@ from network_optimizer import (
 
 def create_network_optimizer(
     objective: str,
+    objective_function: str,  # only for p-median
     warehouses: dict,
     customers: dict,
     distance: dict,
-    factories: dict = None,
-    num_warehouses: int = None,
-    high_service_distance: float = None,
-    avg_service_distance: float = None,
-    max_service_distance: float = None,
+    factories: dict | None = None,
+    num_warehouses: int = 0,
+    high_service_distance: float = 0,
+    avg_service_distance: float = 0,
+    max_service_distance: float = 0,
     force_open: list = None,
     force_closed: list = None,
     force_single_sourcing: bool = True,
@@ -56,16 +57,15 @@ def create_network_optimizer(
     """
     # Common parameters for all optimizers
     common_params = {
+        "factories": factories,
         "warehouses": warehouses,
         "customers": customers,
         "distance": distance,
-        "factories": factories,
         "force_open": force_open,
         "force_closed": force_closed,
-        "force_single_sourcing": force_single_sourcing,
         "force_allocations": force_allocations,
-        "distance_ranges": distance_ranges,
         "mutually_exclusive": mutually_exclusive,
+        "distance_ranges": distance_ranges,
     }
     # print("=====> KWARGS <=====")
     # print(kwargs)
@@ -82,7 +82,12 @@ def create_network_optimizer(
         print("Creating p-median optimizer...")
         optimizer = PMedianOptimizer(
             objective=objective,
+            objective_function=objective_function,
             num_warehouses=num_warehouses,
+            ignore_fixed_cost=ignore_fixed_cost,
+            unit_transport_cost=unit_transport_cost,
+            force_uncapacitated=force_uncapacitated,
+            force_single_sourcing=force_single_sourcing,
             **common_params,
             **kwargs,
         )
@@ -104,6 +109,8 @@ def create_network_optimizer(
             high_service_distance=high_service_distance,
             avg_service_distance=avg_service_distance,
             max_service_distance=max_service_distance,
+            ignore_fixed_cost=ignore_fixed_cost,
+            force_uncapacitated=force_uncapacitated,
             **common_params,
             **kwargs,
         )
@@ -114,6 +121,7 @@ def create_network_optimizer(
             objective=objective,
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
+            force_uncapacitated=force_uncapacitated,
             **common_params,
             **kwargs,
         )
