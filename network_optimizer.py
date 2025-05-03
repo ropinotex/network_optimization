@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from calendar import c
+import dis
 import pulp as pl
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,6 +15,7 @@ class NetworkOptimizer(ABC):
 
     def __init__(
         self,
+        objective: str,
         warehouses: dict,
         customers: dict,
         distance: dict,
@@ -42,6 +45,7 @@ class NetworkOptimizer(ABC):
             mutually_exclusive: List of warehouse ID pairs that cannot be open simultaneously
         """
         # Store input parameters
+        self.objective = objective
         self.warehouses = warehouses
         self.customers = customers
         self.distance = distance
@@ -100,8 +104,12 @@ class NetworkOptimizer(ABC):
         self._add_allocation_constraints()
 
         # If not forcing uncapacitated, add capacity constraints
-        if not self.force_uncapacitated:
+        # if not self.force_uncapacitated:
+        if self.objective == "CFLP":
+            print("Adding capacity constraints...")
             self._add_capacity_constraints()
+        else:
+            print("Uncapacitated model, skipping capacity constraints.")
 
     def _create_decision_vars(self):
         """Create common decision variables for the model"""
@@ -450,6 +458,7 @@ class PMedianOptimizer(NetworkOptimizer):
 
     def __init__(
         self,
+        objective: str,
         num_warehouses: int,
         warehouses: dict,
         customers: dict,
@@ -465,7 +474,13 @@ class PMedianOptimizer(NetworkOptimizer):
             distance: Distance matrix
             **kwargs: Additional arguments passed to parent class
         """
-        super().__init__(warehouses, customers, distance, **kwargs)
+        super().__init__(
+            objective=objective,
+            warehouses=warehouses,
+            customers=customers,
+            distance=distance,
+            **kwargs,
+        )
         self.num_warehouses = num_warehouses
 
     def build_model(self, is_maximization: bool = False):
@@ -526,6 +541,7 @@ class PCoverOptimizer(NetworkOptimizer):
 
     def __init__(
         self,
+        objective: str,
         num_warehouses: int,
         warehouses: dict,
         customers: dict,
@@ -547,7 +563,13 @@ class PCoverOptimizer(NetworkOptimizer):
             max_service_distance: Optional maximum service distance allowed
             **kwargs: Additional arguments passed to parent class
         """
-        super().__init__(warehouses, customers, distance, **kwargs)
+        super().__init__(
+            objective=objective,
+            warehouses=warehouses,
+            customers=customers,
+            distance=distance,
+            **kwargs,
+        )
         self.num_warehouses = num_warehouses
         self.high_service_distance = high_service_distance
         self.avg_service_distance = avg_service_distance
@@ -655,6 +677,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
 
     def __init__(
         self,
+        objective: str,
         warehouses: dict,
         customers: dict,
         distance: dict,
@@ -674,7 +697,13 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
         """
         # Force uncapacitated model
         kwargs["force_uncapacitated"] = True
-        super().__init__(warehouses, customers, distance, **kwargs)
+        super().__init__(
+            objective=objective,
+            warehouses=warehouses,
+            customers=customers,
+            distance=distance,
+            **kwargs,
+        )
         self.unit_transport_cost = unit_transport_cost
         self.ignore_fixed_cost = ignore_fixed_cost
 
@@ -762,6 +791,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
 
     def __init__(
         self,
+        objective: str,
         warehouses: dict,
         customers: dict,
         distance: dict,
@@ -782,11 +812,12 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
         # Make sure force_uncapacitated is False for capacitated model
         kwargs.pop("force_uncapacitated", None)
         super().__init__(
-            warehouses,
-            customers,
-            distance,
-            unit_transport_cost,
-            ignore_fixed_cost,
+            objective=objective,
+            warehouses=warehouses,
+            customers=customers,
+            distance=distance,
+            unit_transport_cost=unit_transport_cost,
+            ignore_fixed_cost=ignore_fixed_cost,
             **kwargs,
         )
 

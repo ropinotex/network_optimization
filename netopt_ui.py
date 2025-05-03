@@ -1,4 +1,3 @@
-from gc import disable
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 from netopt_compat import netopt
@@ -115,8 +114,22 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
     )
 
     force_allocations = widgets.Text(
-        description="Plot size",
+        description="Force allocations",
         placeholder="[(1, 4), (2, 2)]",
+        layout=form_layout,
+        style=form_style,
+    )
+
+    unit_transport_cost = widgets.FloatText(
+        description="Unit transport cost",
+        value=0.1,
+        layout=form_layout,
+        style=form_style,
+    )
+
+    mutually_exclusive = widgets.Text(
+        description="Mutually exclusive",
+        placeholder="[(1, 2), (3, 4)]",
         layout=form_layout,
         style=form_style,
     )
@@ -237,6 +250,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                     "hide_inactive": hide_inactive.value,
                     "distance_ranges": parse(distance_ranges.value),
                     "objective": objective.value,
+                    "unit_transport_cost": unit_transport_cost.value,
                     "high_service_distance": high_service_distance.value or None,
                     "force_single_sourcing": force_single_sourcing.value,
                     "force_uncapacitated": force_uncapacitated.value,
@@ -244,6 +258,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                     "force_open": parse(force_open.value),
                     "force_closed": parse(force_closed.value),
                     "force_allocations": parse(force_allocations.value),
+                    "mutually_exclusive": parse(mutually_exclusive.value),
                     "warehouse_marker": warehouse_marker.value,
                     "warehouse_markercolor": warehouse_markercolor.value,
                     "warehouse_markersize": warehouse_markersize.value,
@@ -263,8 +278,10 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                 customers=customers,
                 distance=distance,
                 distance_ranges=params.get("distance_ranges", []),
-                objective=params.get("objective", "mindistance"),
+                objective=params.get("objective", "p-median"),
                 high_service_distance=params.get("high_service_distance", None),
+                unit_transport_cost=params.get("unit_transport_cost", 0.1),
+                mutually_exclusive=params.get("mutually_exclusive", []),
                 plot=plot.value,
                 plot_size=params.get("plot_size", (8, 12)),
                 hide_inactive=hide_inactive.value,
@@ -303,6 +320,8 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
             force_open,
             force_closed,
             force_allocations,
+            mutually_exclusive,
+            unit_transport_cost,
             # warehouses,
             # customers,
             # distance,
@@ -339,152 +358,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
         layout=sec_layout,
     )
 
-    # Section 3: Display & run
-    # sec3 = widgets.VBox(
-    #     [
-    #         # widgets.HTML("<h4>Display & Run</h4>"),
-    #         # ignore_fc,
-    #         # plot,
-    #         # plot_size,
-    #         # hide_inactive,
-    #         # hide_flows,
-    #         # solver_log,
-    #         # run_button,
-    #     ],
-    #     layout=sec_layout,
-    # )
-
     # Combine into one HBox
     ui = widgets.HBox([sec1, sec2])
 
     display(ui, button, output)
-
-
-# def netopt_ui(warehouses, customers, distance):
-
-#     # --- 1. Define all your widgets ---
-#     # warehouses = widgets.Textarea(description="Warehouses", placeholder="['W1','W2','W3']")
-#     # customers  = widgets.Textarea(description="Customers",  placeholder="['C1','C2','C3']")
-#     # distance   = widgets.Textarea(description="Distance",   placeholder="[[10,20],[5,15]]")
-#     # distance_ranges = widgets.Text(description="Dist. Ranges", placeholder="[0,10,20]")
-
-#     # objective = widgets.Dropdown(
-#     #     options=["", "mindistance", "maxcover"], description="Objective"
-#     # )
-#     # high_sd = widgets.FloatText(description="High svc dist")
-#     # avg_sd = widgets.FloatText(description="Avg svc dist")
-#     # max_sd = widgets.FloatText(description="Max svc dist")
-#     # unit_cost = widgets.FloatText(description="Unit cost", value=0.1)
-
-#     # force_open = widgets.Text(description="Force open", placeholder="[0,2]")
-#     # force_closed = widgets.Text(description="Force closed", placeholder="[1]")
-#     # force_alloc = widgets.Text(description="Force allocs", placeholder="[(0,1)]")
-#     # mut_excl = widgets.Text(description="Mut. excl.", placeholder="[(0,1)]")
-#     # force_single = widgets.Checkbox(description="Single sourcing", value=True)
-#     # force_uncap = widgets.Checkbox(description="Uncapacitated", value=False)
-
-#     # ignore_fc = widgets.Checkbox(description="Ignore fixed cost")
-#     # plot = widgets.Checkbox(description="Show plot", value=True)
-#     # plot_size = widgets.Text(description="Plot size", placeholder="(8,12)")
-#     # hide_inactive = widgets.Checkbox(description="Hide inactive")
-#     # hide_flows = widgets.Checkbox(description="Hide flows")
-#     # solver_log = widgets.Checkbox(description="Solver log")
-
-#     run_button = widgets.Button(description="Run netopt", button_style="success")
-#     out = widgets.Output()
-
-#     # --- 2. Simple eval helper ---
-#     def parse(txt):
-#         return eval(txt) if txt.strip() else None
-
-#     # --- 3. Callback to call netopt ---
-#     def on_run(_):
-#         with out:
-#             clear_output()
-#             # try:
-#             #     params = {
-#             #         "num_warehouses": num_wh.value,
-#             #         "warehouses": warehouses,
-#             #         "customers": customers,
-#             #         "distance": distance,
-#             #         # "distance_ranges": parse(distance_ranges.value),
-#             #         # "objective": objective.value,
-#             #         # "high_service_distance": high_sd.value or None,
-#             #         # "avg_service_distance": avg_sd.value or None,
-#             #         # "max_service_distance": max_sd.value or None,
-#             #         # "force_open": parse(force_open.value),
-#             #         # "force_closed": parse(force_closed.value),
-#             #         # "force_single_sourcing": force_single.value,
-#             #         # "force_uncapacitated": force_uncap.value,
-#             #         # "force_allocations": parse(force_alloc.value),
-#             #         # "ignore_fixed_cost": ignore_fc.value,
-#             #         # "plot": plot.value,
-#             #         # "plot_size": parse(plot_size.value) or (8, 12),
-#             #         # "hide_inactive": hide_inactive.value,
-#             #         # "hide_flows": hide_flows.value,
-#             #         # "solver_log": solver_log.value,
-#             #         # "unit_transport_cost": unit_cost.value,
-#             #         # "mutually_exclusive": parse(mut_excl.value),
-#             #     }
-#             #     # result = netopt(**params)
-#             #     # print("Result:", result)
-#             # except Exception as e:
-#             #     print("Error:", e)
-
-#     run_button.on_click(on_run)
-
-#     # --- 4. Build three columns ---
-#     sec_layout = widgets.Layout(
-#         border="1px solid #ddd", padding="10px", margin="5px", width="30%"
-#     )
-
-#     # Section 1: General parameters
-#     sec1 = widgets.VBox(
-#         [
-#             widgets.HTML("<h4>General</h4>"),
-#             num_wh,
-#             warehouses,
-#             customers,
-#             distance,
-#             # distance_ranges,
-#             # objective,
-#         ],
-#         layout=sec_layout,
-#     )
-
-#     # Section 2: Constraints
-#     sec2 = widgets.VBox(
-#         [
-#             # widgets.HTML("<h4>Constraints</h4>"),
-#             # high_sd,
-#             # avg_sd,
-#             # max_sd,
-#             # unit_cost,
-#             # force_open,
-#             # force_closed,
-#             # force_alloc,
-#             # mut_excl,
-#             # force_single,
-#             # force_uncap,
-#         ],
-#         layout=sec_layout,
-#     )
-
-#     # Section 3: Display & run
-#     sec3 = widgets.VBox(
-#         [
-#             # widgets.HTML("<h4>Display & Run</h4>"),
-#             # ignore_fc,
-#             # plot,
-#             # plot_size,
-#             # hide_inactive,
-#             # hide_flows,
-#             # solver_log,
-#             # run_button,
-#         ],
-#         layout=sec_layout,
-#     )
-
-#     # Combine into one HBox
-#     ui = widgets.HBox([sec1, sec2, sec3])
-#     display(ui, out)

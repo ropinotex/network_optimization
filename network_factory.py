@@ -67,6 +67,10 @@ def create_network_optimizer(
         "distance_ranges": distance_ranges,
         "mutually_exclusive": mutually_exclusive,
     }
+    # print("=====> KWARGS <=====")
+    # print(kwargs)
+    # print("=====> COMMON PARAMS <=====")
+    # print(common_params)
 
     # Create the appropriate optimizer based on objective
     if objective == "p-median":
@@ -77,7 +81,10 @@ def create_network_optimizer(
 
         print("Creating p-median optimizer...")
         optimizer = PMedianOptimizer(
-            num_warehouses=num_warehouses, **common_params, **kwargs
+            objective=objective,
+            num_warehouses=num_warehouses,
+            **common_params,
+            **kwargs,
         )
 
     elif objective == "p-cover":
@@ -92,6 +99,7 @@ def create_network_optimizer(
 
         print("Creating p-cover optimizer...")
         optimizer = PCoverOptimizer(
+            objective=objective,
             num_warehouses=num_warehouses,
             high_service_distance=high_service_distance,
             avg_service_distance=avg_service_distance,
@@ -103,6 +111,7 @@ def create_network_optimizer(
     elif objective == "UFLP":
         print("Creating uncapacitated FLP optimizer...")
         optimizer = UncapacitatedFLPOptimizer(
+            objective=objective,
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
             **common_params,
@@ -112,6 +121,7 @@ def create_network_optimizer(
     elif objective == "CFLP":
         print("Creating capacitated FLP optimizer...")
         optimizer = CapacitatedFLPOptimizer(
+            objective=objective,
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
             **common_params,
@@ -160,6 +170,9 @@ def solve_network_optimization(
 
     # Build the optimization model
     optimizer.build_model()
+
+    # if kwargs.get("print_model", False):
+    #     print(optimizer.model)
 
     # Solve the model
     solution = optimizer.solve(solver_log=solver_log)
