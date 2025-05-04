@@ -13,7 +13,18 @@ def parse(txt):
 
 
 def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
-    """User interface for the netopt function."""
+    """User interface for the netopt function.
+    Required parameters:
+    - warehouses: dict of Warehouse objects
+    - customers: dict of Customer objects
+
+    Call as
+
+    netopt_ui(warehouses, customers)
+
+    where warehouses and customers contain the problem's data.
+
+    """
 
     # Define a consistent layout for all form elements
     form_layout = widgets.Layout(
@@ -145,7 +156,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
 
     mutually_exclusive = widgets.Text(
         description="Mutually exclusive",
-        placeholder="[(1, 2), (3, 4)]",
+        placeholder="[(1, 2, 6), (3, 4)]",
         layout=form_layout,
         style=form_style,
     )
@@ -419,7 +430,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
     display(ui, button, output)
 
 
-def edit_warehouse(warehouses: dict, warehouse_id: int) -> dict:
+def edit_warehouse_ui(warehouses: dict, warehouse_id: int) -> dict:
     """Edit a warehouse in the warehouses dictionary."""
 
     warehouse = warehouses.get(warehouse_id, None)
@@ -532,7 +543,7 @@ def edit_warehouse(warehouses: dict, warehouse_id: int) -> dict:
     button.on_click(update_warehouse)
 
 
-def add_warehouse(warehouses: dict) -> dict:
+def add_warehouse_ui(warehouses: dict) -> dict:
     """Add a new warehouse to the warehouses dictionary."""
 
     # Calculate next available warehouse ID
@@ -597,7 +608,7 @@ def add_warehouse(warehouses: dict) -> dict:
 
     capacity = widgets.Text(
         description="Capacity",
-        value="None",
+        value="0",
         placeholder="Insert the capacity",
         layout=form_layout,
         style=form_style,
@@ -605,7 +616,8 @@ def add_warehouse(warehouses: dict) -> dict:
 
     fixed_cost = widgets.Text(
         description="Fixed cost",
-        value="Insert the fixed cost",
+        value="0",
+        placeholder="Insert the fixed cost",
         layout=form_layout,
         style=form_style,
     )
@@ -746,10 +758,10 @@ def add_warehouse(warehouses: dict) -> dict:
 
     button.on_click(add_new_warehouse)
 
-    return warehouses
+    # return warehouses
 
 
-def delete_warehouse(warehouses: dict) -> dict:
+def delete_warehouse_ui(warehouses: dict) -> dict:
     """Delete a warehouse from the warehouses dictionary."""
 
     # Define a consistent layout for all form elements
@@ -919,4 +931,4 @@ def delete_warehouse(warehouses: dict) -> dict:
     delete_button.on_click(confirm_delete)
     cancel_button.on_click(cancel_delete)
 
-    return warehouses
+    # return warehouses

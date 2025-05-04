@@ -3,9 +3,9 @@ from network_factory import solve_network_optimization
 
 def netopt(
     num_warehouses: int,
-    factories: dict | None,
     warehouses: dict,
     customers: dict,
+    factories: dict | None = None,
     distance: dict | None = None,
     distance_ranges: list | None = None,
     objective: str = "",
