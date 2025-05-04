@@ -1,6 +1,7 @@
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 from netopt_compat import netopt
+from netopt_utils import show_assignments
 # from data_structures import Warehouse, Customer
 
 
@@ -228,6 +229,11 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         button_style="success",
     )
 
+    # show_assignments_button = widgets.Button(
+    #     description="Show assignments",
+    #     button_style="warning",
+    # )
+
     output = widgets.Output()
 
     # Function to update widget states based on objective selection
@@ -363,6 +369,8 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 customer_markercolor=params.get("customer_markercolor", "red"),
                 customer_markersize=int(params.get("customer_markersize", 6)),
             )
+            print("=====> Assignments <=====")
+            show_assignments(result)
             # print(result)
 
     button.on_click(run_netopt)
