@@ -68,6 +68,7 @@ class NetworkOptimizer(ABC):
         self.force_allocations = force_allocations if force_allocations else []
         self.mutually_exclusive = mutually_exclusive if mutually_exclusive else []
 
+        self.gapRel = kwargs.get("gapRel", 0.05)  # Default gap tolerance
         # Set up distance ranges
         if not distance_ranges:
             self.distance_ranges = [0, 99999]
@@ -256,14 +257,24 @@ class NetworkOptimizer(ABC):
         print()
         print("SOLVING (time limit = 120 seconds)...", end="")
         _solver = pl.PULP_CBC_CMD(
-            keepFiles=False, gapRel=0.00, timeLimit=time_limit, msg=solver_log
+            keepFiles=False,
+            gapRel=self.gapRel,
+            timeLimit=time_limit,
+            msg=True,
+            options=[
+                "preprocess on",  # run CBC’s presolver
+                "secHeuristics on",  # enable secondary heuristics
+                "cuts on",  # turn on all cut generators
+                f"ratioGap {self.gapRel}",  # stop when gap <1%
+                "improveStart 1",  # invest more in finding good start solutions
+            ],
         )
         self.model.solve(solver=_solver)
         print("OK")
 
         if pl.LpStatus[self.model.status] == "Optimal":
             print(
-                f"==> Optimization Status: {Colors.GREEN}{Colors.BOLD}{pl.LpStatus[self.model.status]} {Colors.RESET}<==",
+                f"==> Optimization Status: {Colors.GREEN}{Colors.BOLD}{pl.LpStatus[self.model.status]} {Colors.RESET} ({self.gapRel} tolerance)<==",
             )
         elif pl.LpStatus[self.model.status] == "Infeasible":
             print(
