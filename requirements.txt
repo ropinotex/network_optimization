@@ -2,9 +2,10 @@ jupyter
 numpy
 openpyxl
 pandas
-PuLP==2.6.0
+pulp
 matplotlib
 haversine
 tabulate
 folium
+ipywidgets
 
