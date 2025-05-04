@@ -573,7 +573,7 @@ def add_warehouse_ui(warehouses: dict) -> dict:
     )
 
     w_id = widgets.IntText(
-        description="Warehouse ID",
+        description="Warehouse ID (automatically assigned)",
         value=next_id,
         disabled=True,
         layout=form_layout,
