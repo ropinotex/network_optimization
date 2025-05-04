@@ -12,7 +12,7 @@ def parse(txt):
         raise excp
 
 
-def netopt_ui(warehouses: dict, customers: dict, distance: dict):
+def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
     """User interface for the netopt function."""
 
     # Define a consistent layout for all form elements
@@ -329,7 +329,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict):
                 factories=None,
                 warehouses=warehouses,
                 customers=customers,
-                distance=distance,
+                distance=None,
                 distance_ranges=params.get("distance_ranges", []),
                 objective=params.get("objective", "p-median"),
                 objective_function=params.get("objective_function", "mindistance"),

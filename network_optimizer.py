@@ -3,6 +3,8 @@ import pulp as pl
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from data_structures import calculate_dm
+
 
 # Define color codes
 class Colors:
@@ -29,8 +31,8 @@ class NetworkOptimizer(ABC):
         objective: str,
         warehouses: dict,
         customers: dict,
-        distance: dict,
-        factories: dict = None,
+        distance: dict | None = None,
+        factories: dict | None = None,
         distance_ranges: list | None = None,
         force_open: list | None = None,
         force_closed: list | None = None,
@@ -59,7 +61,12 @@ class NetworkOptimizer(ABC):
         self.objective = objective
         self.warehouses = warehouses
         self.customers = customers
-        self.distance = distance
+        if distance:
+            self.distance = distance
+        else:
+            print("Calculating distance matrix...")
+            distance = calculate_dm(self.warehouses, self.customers)
+
         self.factories = factories if factories else {}
         self.force_open = force_open if force_open else []
         self.force_closed = force_closed if force_closed else []
@@ -522,7 +529,7 @@ class PMedianOptimizer(NetworkOptimizer):
         num_warehouses: int,
         warehouses: dict,
         customers: dict,
-        distance: dict,
+        distance: dict | None = None,
         force_uncapacitated: bool = False,
         force_single_sourcing: bool = True,
         unit_transport_cost: float = 0.1,

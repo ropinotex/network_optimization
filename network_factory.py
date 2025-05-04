@@ -1,3 +1,4 @@
+from data_structures import calculate_dm
 from network_optimizer import (
     NetworkOptimizer,
     PMedianOptimizer,
@@ -12,7 +13,7 @@ def create_network_optimizer(
     objective_function: str,  # only for p-median
     warehouses: dict,
     customers: dict,
-    distance: dict,
+    distance: dict | None = None,
     factories: dict | None = None,
     num_warehouses: int = 0,
     high_service_distance: float = 0,
@@ -55,6 +56,13 @@ def create_network_optimizer(
     Returns:
         An instance of a NetworkOptimizer subclass based on the specified objective
     """
+
+    # Compute distance matrix if not provided
+    if not distance and warehouses and customers:
+        # Calculate the distance matrix if not provided
+        print("Calculating distance matrix...")
+        distance = calculate_dm(warehouses, customers)
+
     # Common parameters for all optimizers
     common_params = {
         "factories": factories,
@@ -147,7 +155,11 @@ def create_network_optimizer(
 
 
 def solve_network_optimization(
-    objective: str, warehouses: dict, customers: dict, distance: dict, **kwargs
+    objective: str,
+    warehouses: dict,
+    customers: dict,
+    distance: dict | None = None,
+    **kwargs,
 ) -> dict:
     """
     Convenience function to create an optimizer, solve the model and return results
