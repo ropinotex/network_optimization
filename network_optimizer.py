@@ -409,7 +409,7 @@ class NetworkOptimizer(ABC):
             plot_size: Size of the plot as a tuple (width, height)
         """
 
-        from netopt import plot_map
+        from netopt_utils import plot_map
 
         plot_map(
             warehouses=self.warehouses,
