@@ -340,6 +340,7 @@ class NetworkOptimizer(ABC):
                 "Warehouse Longitude": self.warehouses[w].longitude,
                 "Customers Latitude": self.customers[c].latitude,
                 "Customers Longitude": self.customers[c].longitude,
+                "Flow": self.assignment_vars[w, c].varValue * self.customers[c].demand,
             }
             customers_assignment.append(cust)
 
