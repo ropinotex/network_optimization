@@ -321,6 +321,7 @@ def show_assignments(results):
                 each["Customer"],
                 each["Customer Demand"],
                 each["Distance"],
+                each["Flow"],
             ]
         )
 
@@ -333,6 +334,7 @@ def show_assignments(results):
             "Customer",
             "Customer_demand",
             "Distance",
+            "Flow",
         ],
     )
     with pd.option_context("display.max_rows", 100):
