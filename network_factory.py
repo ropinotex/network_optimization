@@ -21,6 +21,7 @@ def create_network_optimizer(
     avg_service_distance: float = 0,
     max_service_distance: float = 0,
     coverage_distance: float = 0,
+    assign_uncovered_to_nearest: bool = False,
     force_open: list = None,
     force_closed: list = None,
     force_single_sourcing: bool = True,
@@ -123,6 +124,7 @@ def create_network_optimizer(
             max_service_distance=max_service_distance,
             ignore_fixed_cost=ignore_fixed_cost,
             force_uncapacitated=force_uncapacitated,
+            assign_uncovered_to_nearest=assign_uncovered_to_nearest,
             **common_params,
             **kwargs,
         )

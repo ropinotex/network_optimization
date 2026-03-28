@@ -669,6 +669,7 @@ class PCoverOptimizer(NetworkOptimizer):
         avg_service_distance: float = None,
         max_service_distance: float = None,
         force_uncapacitated: bool = False,
+        assign_uncovered_to_nearest: bool = False,
         **kwargs,
     ):
         """Initialize P-Cover optimizer
@@ -681,6 +682,10 @@ class PCoverOptimizer(NetworkOptimizer):
             high_service_distance: Distance within which demand is considered covered
             avg_service_distance: Optional limit on average service distance
             max_service_distance: Optional maximum service distance allowed
+            assign_uncovered_to_nearest: If True, a secondary distance-minimization
+                term is added so customers outside high_service_distance are assigned
+                to their nearest active facility. The primary coverage objective always
+                dominates.
             **kwargs: Additional arguments passed to parent class
         """
         super().__init__(
@@ -697,6 +702,7 @@ class PCoverOptimizer(NetworkOptimizer):
         self.max_service_distance = (
             max_service_distance if max_service_distance else 99999
         )
+        self.assign_uncovered_to_nearest = assign_uncovered_to_nearest
 
         # Calculate service distance parameters
         self.high_service_dist_par = {
@@ -756,8 +762,10 @@ class PCoverOptimizer(NetworkOptimizer):
 
     def set_objective(self):
         """Set the P-Cover objective function"""
-        # Maximize covered demand within high service distance
-        total_covered_demand_high_service = pl.lpSum(
+        total_demand = pl.lpSum([self.customers[c].demand for c in self.customers_id])
+
+        # Primary: maximize fraction of demand covered within high_service_distance
+        primary = pl.lpSum(
             [
                 self.customers[c].demand
                 * self.high_service_dist_par[w, c]
@@ -765,9 +773,33 @@ class PCoverOptimizer(NetworkOptimizer):
                 for w in self.warehouses_id
                 for c in self.customers_id
             ]
-        ) / pl.lpSum([self.customers[c].demand for c in self.customers_id])
+        ) / total_demand
 
-        self.model.setObjective(total_covered_demand_high_service)
+        if self.assign_uncovered_to_nearest:
+            # Secondary: minimize distance for assignments outside high_service_distance.
+            # ε is chosen so that covering one more customer always beats any distance saving:
+            #   ε · |customers| < min_demand / total_demand
+            total_dem = sum(self.customers[c].demand for c in self.customers_id)
+            min_dem = min(self.customers[c].demand for c in self.customers_id)
+            out_of_coverage = [
+                (w, c)
+                for w in self.warehouses_id
+                for c in self.customers_id
+                if self.high_service_dist_par[w, c] == 0
+            ]
+            if out_of_coverage:
+                max_dist = max(self.distance[w, c] for w, c in out_of_coverage)
+                epsilon = 0.9 * min_dem / (len(self.customers_id) * total_dem)
+                secondary = pl.lpSum(
+                    [
+                        (self.distance[w, c] / max_dist) * self.assignment_vars[w, c]
+                        for w, c in out_of_coverage
+                    ]
+                )
+                self.model.setObjective(primary - epsilon * secondary)
+                return
+
+        self.model.setObjective(primary)
 
     def _get_plot_options(self):
         """Get options for plotting P-Cover model"""

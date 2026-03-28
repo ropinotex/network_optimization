@@ -183,6 +183,14 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         style=form_style,
     )
 
+    assign_uncovered_to_nearest = widgets.Checkbox(
+        description="Assign uncovered to nearest",
+        value=False,
+        layout=form_layout,
+        style=form_style,
+        disabled=True,
+    )
+
     ignore_fixed_cost = widgets.Checkbox(
         description="Ignore fixed cost",
         layout=form_layout,
@@ -321,6 +329,13 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         else:
             high_service_distance.disabled = True
 
+        # assign_uncovered_to_nearest: only meaningful for p-cover
+        if new_obj == "p-cover":
+            assign_uncovered_to_nearest.disabled = False
+        else:
+            assign_uncovered_to_nearest.value = False
+            assign_uncovered_to_nearest.disabled = True
+
         _update_feasibility_warning()
 
         # force_uncapacitated and force_single_sourcing:
@@ -447,6 +462,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             coverage_kwargs = {}
             if obj == "p-cover":
                 coverage_kwargs["high_service_distance"] = params.get("high_service_distance")
+                coverage_kwargs["assign_uncovered_to_nearest"] = assign_uncovered_to_nearest.value
             elif obj == "totalcover":
                 coverage_kwargs["coverage_distance"] = params.get("high_service_distance")
 
@@ -497,6 +513,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             objective_function,
             high_service_distance,
             feasibility_warning,
+            assign_uncovered_to_nearest,
             distance_ranges,
             force_single_sourcing,
             force_uncapacitated,
