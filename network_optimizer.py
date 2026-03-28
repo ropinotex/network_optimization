@@ -65,7 +65,7 @@ class NetworkOptimizer(ABC):
             self.distance = distance
         else:
             print("Calculating distance matrix...")
-            distance = calculate_dm(self.warehouses, self.customers)
+            self.distance = calculate_dm(self.warehouses, self.customers)
 
         self.factories = factories if factories else {}
         self.force_open = force_open if force_open else []
@@ -786,6 +786,83 @@ class PCoverOptimizer(NetworkOptimizer):
         )
 
         # Print common solution details
+        super().print_solution_details()
+
+
+class TotalCoverOptimizer(NetworkOptimizer):
+    """Total Cover optimization model
+
+    Finds the minimum number of facilities needed to cover all customers
+    within a specified coverage radius.
+    """
+
+    def __init__(
+        self,
+        objective: str,
+        warehouses: dict,
+        customers: dict,
+        distance: dict,
+        coverage_distance: float,
+        **kwargs,
+    ):
+        """Initialize Total Cover optimizer
+
+        Args:
+            warehouses: Dictionary of warehouse objects
+            customers: Dictionary of customer objects
+            distance: Distance matrix
+            coverage_distance: Radius within which a warehouse covers a customer
+            **kwargs: Additional arguments passed to parent class
+        """
+        super().__init__(
+            objective=objective,
+            warehouses=warehouses,
+            customers=customers,
+            distance=distance,
+            **kwargs,
+        )
+        self.coverage_distance = coverage_distance
+
+        # Precompute binary coverage parameters
+        self.coverage_par = {
+            (w, c): 1 if self.distance[w, c] <= self.coverage_distance else 0
+            for w in self.warehouses_id
+            for c in self.customers_id
+        }
+
+    def build_model(self, is_maximization: bool = False):
+        """Build the Total Cover optimization model (always minimization)"""
+        super().build_model(is_maximization=False)
+
+        # Restrict assignments: a customer can only be served by a warehouse within coverage radius
+        for w in self.warehouses_id:
+            for c in self.customers_id:
+                self.assignment_vars[w, c].upBound = self.coverage_par[w, c]
+
+        self.set_objective()
+
+    def set_objective(self):
+        """Minimize total number of open warehouses"""
+        print("- Objective function: minimize number of open warehouses")
+        self.model.setObjective(
+            pl.lpSum([self.facility_status_vars[w] for w in self.warehouses_id])
+        )
+
+    def _get_plot_options(self):
+        return {"radius": self.coverage_distance}
+
+    def print_solution_details(self):
+        """Print Total Cover specific solution details"""
+        if not self.solution:
+            print("No solution available. Please solve the model first.")
+            return
+
+        print("Total Cover optimization results:")
+        print(
+            f"Minimum warehouses to cover all demand within {self.coverage_distance} km: "
+            f"{int(self.solution['objective_value'])}"
+        )
+
         super().print_solution_details()
 
 

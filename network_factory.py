@@ -3,6 +3,7 @@ from network_optimizer import (
     NetworkOptimizer,
     PMedianOptimizer,
     PCoverOptimizer,
+    TotalCoverOptimizer,
     UncapacitatedFLPOptimizer,
     CapacitatedFLPOptimizer,
 )
@@ -19,6 +20,7 @@ def create_network_optimizer(
     high_service_distance: float = 0,
     avg_service_distance: float = 0,
     max_service_distance: float = 0,
+    coverage_distance: float = 0,
     force_open: list = None,
     force_closed: list = None,
     force_single_sourcing: bool = True,
@@ -34,7 +36,7 @@ def create_network_optimizer(
     Factory function to create the appropriate network optimizer based on the objective.
 
     Args:
-        objective: The objective function type ('mindistance', 'maxcover', 'mincost')
+        objective: The objective function type ('mindistance', 'maxcover', 'totalcover', 'mincost')
         warehouses: Dictionary of warehouse objects
         customers: Dictionary of customer objects
         distance: Distance matrix between warehouses and customers
@@ -43,6 +45,7 @@ def create_network_optimizer(
         high_service_distance: Distance within which demand is considered covered (for p-cover)
         avg_service_distance: Optional limit on average service distance
         max_service_distance: Optional maximum service distance allowed
+        coverage_distance: Coverage radius for total-cover model
         force_open: List of warehouse IDs that must be open
         force_closed: List of warehouse IDs that must be closed
         force_single_sourcing: Whether customers must be served by a single warehouse
@@ -146,9 +149,24 @@ def create_network_optimizer(
             **kwargs,
         )
 
+    elif objective == "totalcover":
+        if not coverage_distance:
+            raise ValueError(
+                "coverage_distance must be specified for total-cover optimization"
+            )
+
+        print("Creating total-cover optimizer...")
+        print("Model's characteristics:")
+        optimizer = TotalCoverOptimizer(
+            objective=objective,
+            coverage_distance=coverage_distance,
+            **common_params,
+            **kwargs,
+        )
+
     else:
         raise ValueError(
-            f"Unknown objective: {objective}. Must be one of: 'p-median', 'p-cover', 'UFLP', 'CFLP'."
+            f"Unknown objective: {objective}. Must be one of: 'p-median', 'p-cover', 'totalcover', 'UFLP', 'CFLP'."
         )
 
     return optimizer
@@ -165,7 +183,7 @@ def solve_network_optimization(
     Convenience function to create an optimizer, solve the model and return results
 
     Args:
-        objective: The objective function type ('mindistance', 'maxcover', 'mincost')
+        objective: The objective function type ('mindistance', 'maxcover', 'totalcover', 'mincost')
         warehouses: Dictionary of warehouse objects
         customers: Dictionary of customer objects
         distance: Distance matrix between warehouses and customers
