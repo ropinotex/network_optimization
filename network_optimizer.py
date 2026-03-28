@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
 import pulp as pl
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from data_structures import calculate_dm
 
@@ -17,6 +18,21 @@ class Colors:
     CYAN = "\033[96m"
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
+
+
+class Severity(Enum):
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+
+
+@dataclass
+class ValidationIssue:
+    severity: Severity
+    code: str  # machine-readable tag, e.g. "FORCE_OPEN_CLOSED_CONFLICT"
+    message: str  # human-readable explanation
+
+    def __str__(self):
+        return f"[{self.severity.value}] {self.message}"
 
 
 class NetworkOptimizer(ABC):
@@ -75,7 +91,7 @@ class NetworkOptimizer(ABC):
         self.force_allocations = force_allocations if force_allocations else []
         self.mutually_exclusive = mutually_exclusive if mutually_exclusive else []
 
-        self.gapRel = kwargs.get("gapRel", 0.05)  # Default gap tolerance
+        self.gapRel = kwargs.get("gapRel", 0.0)  # Default gap tolerance
         # Set up distance ranges
         if not distance_ranges:
             self.distance_ranges = [0, 99999]
@@ -102,12 +118,129 @@ class NetworkOptimizer(ABC):
         self.multi_sourced = {}
         self.solution = None
 
+    def validate(self) -> list[ValidationIssue]:
+        """Run pre-solve feasibility checks. Returns a list of ValidationIssue objects.
+        Subclasses should call super().validate() and extend the returned list."""
+        issues: list[ValidationIssue] = []
+
+        # force_open / force_closed intersection
+        conflict = set(self.force_open) & set(self.force_closed)
+        if conflict:
+            issues.append(
+                ValidationIssue(
+                    Severity.ERROR,
+                    "FORCE_OPEN_CLOSED_CONFLICT",
+                    f"Warehouses {sorted(conflict)} appear in both force_open and force_closed. "
+                    f"A warehouse cannot be simultaneously forced open and closed.",
+                )
+            )
+
+        # mutually_exclusive group with >= 2 force_open members
+        force_open_set = set(self.force_open)
+        for group in self.mutually_exclusive:
+            overlap = force_open_set & set(group)
+            if len(overlap) >= 2:
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "MUTUALLY_EXCLUSIVE_FORCE_OPEN",
+                        f"Mutually exclusive group {list(group)} has {len(overlap)} members also "
+                        f"in force_open: {sorted(overlap)}. At most 1 can be open simultaneously.",
+                    )
+                )
+
+        # force_allocations: unknown IDs or closed warehouse
+        for w_id, c_id in self.force_allocations:
+            if w_id not in self.warehouses_id:
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "FORCE_ALLOC_UNKNOWN_WAREHOUSE",
+                        f"force_allocations references warehouse ID {w_id} which does not exist.",
+                    )
+                )
+            if c_id not in self.customers_id:
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "FORCE_ALLOC_UNKNOWN_CUSTOMER",
+                        f"force_allocations references customer ID {c_id} which does not exist.",
+                    )
+                )
+            if w_id in self.force_closed:
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "FORCE_ALLOC_CLOSED_WAREHOUSE",
+                        f"force_allocations requires warehouse {w_id} to serve customer {c_id}, "
+                        f"but warehouse {w_id} is in force_closed.",
+                    )
+                )
+
+        # customers with demand=None
+        for c_id, c in self.customers.items():
+            if c.demand is None:
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "NULL_CUSTOMER_DEMAND",
+                        f"Customer {c_id} ({c.name!r}) has demand=None. "
+                        f"All customers must have a numeric demand value.",
+                    )
+                )
+
+        return issues
+
+    def _validate_p_constraints(self) -> list[ValidationIssue]:
+        """Shared checks for models that enforce exactly p open facilities (p-median, p-cover)."""
+        issues: list[ValidationIssue] = []
+        total_wh = len(self.warehouses_id)
+        if self.num_warehouses > total_wh:
+            issues.append(
+                ValidationIssue(
+                    Severity.ERROR,
+                    "P_EXCEEDS_TOTAL_WAREHOUSES",
+                    f"num_warehouses={self.num_warehouses} but only {total_wh} "
+                    f"warehouse(s) exist. Cannot open more facilities than are available.",
+                )
+            )
+        if self.num_warehouses < len(self.force_open):
+            issues.append(
+                ValidationIssue(
+                    Severity.ERROR,
+                    "P_LESS_THAN_FORCED_OPEN",
+                    f"num_warehouses={self.num_warehouses} but {len(self.force_open)} "
+                    f"warehouse(s) are in force_open: {self.force_open}. "
+                    f"p must be >= len(force_open).",
+                )
+            )
+        return issues
+
+    def _print_issues(self, issues: list[ValidationIssue]) -> None:
+        """Print validation issues to console with color coding."""
+        for issue in issues:
+            color = Colors.RED if issue.severity == Severity.ERROR else Colors.YELLOW
+            print(
+                f"{color}{Colors.BOLD}[{issue.severity.value}] {issue.message}{Colors.RESET}"
+            )
+
     def build_model(self, is_maximization: bool = False):
         """Build the base optimization model
 
         Args:
             is_maximization: Whether the objective is to be maximized
         """
+        # Pre-solve validation
+        issues = self.validate()
+        if issues:
+            self._print_issues(issues)
+            errors = [i for i in issues if i.severity == Severity.ERROR]
+            if errors:
+                raise ValueError(
+                    f"Model has {len(errors)} validation error(s). "
+                    f"Fix the issues printed above before solving."
+                )
+
         # Create model
         problem_type = pl.LpMaximize if is_maximization else pl.LpMinimize
         self.model = pl.LpProblem("NetworkOptimizationModel", problem_type)
@@ -562,6 +695,38 @@ class PMedianOptimizer(NetworkOptimizer):
         )
         self.ignore_fixed_cost = ignore_fixed_cost
 
+    def validate(self) -> list[ValidationIssue]:
+        issues = NetworkOptimizer.validate(self)
+        issues += self._validate_p_constraints()
+
+        # Capacitated p-median: total available capacity < total demand.
+        # Only meaningful when ALL non-force_closed warehouses have capacity set;
+        # if any are uncapacitated they can absorb unlimited demand.
+        if not self.force_uncapacitated:
+            non_closed = [
+                w
+                for w_id, w in self.warehouses.items()
+                if w_id not in self.force_closed
+            ]
+            all_capacitated = all(getattr(w, "capacity", None) for w in non_closed)
+            if all_capacitated and non_closed:
+                total_capacity = sum(w.capacity for w in non_closed)
+                total_demand = sum(
+                    c.demand for c in self.customers.values() if c.demand is not None
+                )
+                if total_capacity < total_demand:
+                    issues.append(
+                        ValidationIssue(
+                            Severity.ERROR,
+                            "CAPACITY_INFEASIBLE",
+                            f"Total capacity of non-force_closed warehouses ({total_capacity:,.0f}) "
+                            f"is less than total customer demand ({total_demand:,.0f}). "
+                            f"The capacitated model will be infeasible.",
+                        )
+                    )
+
+        return issues
+
     def build_model(self, is_maximization: bool = False):
         """Build the P-Median optimization model
 
@@ -717,6 +882,39 @@ class PCoverOptimizer(NetworkOptimizer):
             for c in self.customers_id
         }
 
+    def validate(self) -> list[ValidationIssue]:
+        issues = NetworkOptimizer.validate(self)
+        issues += self._validate_p_constraints()
+
+        # avg_service_distance sanity: check against best-case lower bound
+        if self.avg_service_distance:
+            total_demand = sum(
+                c.demand for c in self.customers.values() if c.demand is not None
+            )
+            if total_demand > 0:
+                best_case_awd = (
+                    sum(
+                        min(self.distance[w, c_id] for w in self.warehouses_id)
+                        * self.customers[c_id].demand
+                        for c_id in self.customers_id
+                        if self.customers[c_id].demand is not None
+                    )
+                    / total_demand
+                )
+                if self.avg_service_distance < best_case_awd:
+                    issues.append(
+                        ValidationIssue(
+                            Severity.WARNING,
+                            "AVG_SERVICE_DIST_TOO_TIGHT",
+                            f"avg_service_distance={self.avg_service_distance:.1f} km is smaller than "
+                            f"the best-case demand-weighted average distance ({best_case_awd:.1f} km, "
+                            f"assuming every customer goes to its nearest facility). "
+                            f"This constraint is likely infeasible.",
+                        )
+                    )
+
+        return issues
+
     def build_model(self, is_maximization: bool = False):
         """Build the P-Cover optimization model
 
@@ -765,15 +963,18 @@ class PCoverOptimizer(NetworkOptimizer):
         total_demand = pl.lpSum([self.customers[c].demand for c in self.customers_id])
 
         # Primary: maximize fraction of demand covered within high_service_distance
-        primary = pl.lpSum(
-            [
-                self.customers[c].demand
-                * self.high_service_dist_par[w, c]
-                * self.assignment_vars[w, c]
-                for w in self.warehouses_id
-                for c in self.customers_id
-            ]
-        ) / total_demand
+        primary = (
+            pl.lpSum(
+                [
+                    self.customers[c].demand
+                    * self.high_service_dist_par[w, c]
+                    * self.assignment_vars[w, c]
+                    for w in self.warehouses_id
+                    for c in self.customers_id
+                ]
+            )
+            / total_demand
+        )
 
         if self.assign_uncovered_to_nearest:
             # Secondary: minimize distance for assignments outside high_service_distance.
@@ -811,7 +1012,7 @@ class PCoverOptimizer(NetworkOptimizer):
             print("No solution available. Please solve the model first.")
             return
 
-        print(f"P-Cover optimization results:")
+        print("P-Cover optimization results:")
         print(
             f"% covered demand within {self.high_service_distance} distance: "
             f"{round(self.solution['objective_value'] * 100, 1)}%"
@@ -861,6 +1062,28 @@ class TotalCoverOptimizer(NetworkOptimizer):
             for w in self.warehouses_id
             for c in self.customers_id
         }
+
+    def validate(self) -> list[ValidationIssue]:
+        issues = NetworkOptimizer.validate(self)
+
+        # Coverage radius too small: at least one customer can't reach any warehouse
+        for c_id in self.customers_id:
+            min_dist = min(self.distance[w, c_id] for w in self.warehouses_id)
+            if min_dist > self.coverage_distance:
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "TOTALCOVER_RADIUS_TOO_SMALL",
+                        f"Coverage radius {self.coverage_distance:.1f} km is too small: "
+                        f"customer {c_id} ({self.customers[c_id].name!r}) is at least "
+                        f"{min_dist:.1f} km from every warehouse and cannot be covered. "
+                        f"Minimum feasible radius: "
+                        f"{max(min(self.distance[w, c] for w in self.warehouses_id) for c in self.customers_id):.1f} km.",
+                    )
+                )
+                break  # one example is enough
+
+        return issues
 
     def build_model(self, is_maximization: bool = False):
         """Build the Total Cover optimization model (always minimization)"""
@@ -1054,6 +1277,71 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
             force_single_sourcing=force_single_sourcing,
             **kwargs,
         )
+
+    def validate(self) -> list[ValidationIssue]:
+        issues = NetworkOptimizer.validate(self)
+
+        # Total capacity of non-force_closed warehouses vs total demand.
+        # Only meaningful when ALL non-force_closed warehouses have capacity set;
+        # if any are uncapacitated they can absorb unlimited demand.
+        non_closed = [
+            w for w_id, w in self.warehouses.items() if w_id not in self.force_closed
+        ]
+        all_capacitated = all(getattr(w, "capacity", None) for w in non_closed)
+        if all_capacitated and non_closed:
+            total_capacity = sum(w.capacity for w in non_closed)
+            total_demand = sum(
+                c.demand for c in self.customers.values() if c.demand is not None
+            )
+            if total_capacity < total_demand:
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "CAPACITY_INFEASIBLE",
+                        f"Total capacity of non-force_closed warehouses ({total_capacity:,.0f}) "
+                        f"is less than total customer demand ({total_demand:,.0f}). "
+                        f"The model will be infeasible.",
+                    )
+                )
+
+        # Per forced-allocation: demand[c] > capacity[w]
+        for w_id, c_id in self.force_allocations:
+            if w_id not in self.warehouses_id or c_id not in self.customers_id:
+                continue  # already reported by base validate()
+            w = self.warehouses[w_id]
+            c = self.customers[c_id]
+            if (
+                getattr(w, "capacity", None)
+                and c.demand is not None
+                and c.demand > w.capacity
+            ):
+                issues.append(
+                    ValidationIssue(
+                        Severity.ERROR,
+                        "FORCE_ALLOC_DEMAND_EXCEEDS_CAPACITY",
+                        f"force_allocations: customer {c_id} ({c.name!r}) has demand "
+                        f"{c.demand:,.0f} which exceeds capacity {w.capacity:,.0f} "
+                        f"of warehouse {w_id} ({w.name!r}).",
+                    )
+                )
+
+        # Warehouses with no capacity set in CFLP (will be silently excluded)
+        null_cap = [
+            w_id
+            for w_id, w in self.warehouses.items()
+            if not getattr(w, "capacity", None)
+        ]
+        if null_cap:
+            issues.append(
+                ValidationIssue(
+                    Severity.WARNING,
+                    "WAREHOUSES_WITHOUT_CAPACITY",
+                    f"{len(null_cap)} warehouse(s) have no capacity set and will be excluded "
+                    f"from the CFLP model: {null_cap}.",
+                )
+            )
+
+        return issues
 
     def print_solution_details(self):
         """Print Capacitated FLP specific solution details"""

@@ -1,7 +1,7 @@
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 from netopt_compat import netopt
-from netopt_utils import show_assignments
+from netopt_utils import show_assignments, show_results_summary
 # from data_structures import Warehouse, Customer
 
 
@@ -466,37 +466,46 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             elif obj == "totalcover":
                 coverage_kwargs["coverage_distance"] = params.get("high_service_distance")
 
-            result = netopt(
-                num_warehouses=num_wh.value,
-                factories=None,
-                warehouses=active_warehouses,
-                customers=customers,
-                distance=active_distance,
-                distance_ranges=params.get("distance_ranges", []),
-                objective=obj,
-                objective_function=params.get("objective_function", "mindistance"),
-                unit_transport_cost=params.get("unit_transport_cost", 0.1),
-                mutually_exclusive=params.get("mutually_exclusive", []),
-                plot=plot.value,
-                plot_size=params.get("plot_size", (8, 12)),
-                hide_inactive=hide_inactive.value,
-                force_single_sourcing=params.get("force_single_sourcing", False),
-                force_uncapacitated=params.get("force_uncapacitated", False),
-                ignore_fixed_cost=params.get("ignore_fixed_cost", False),
-                force_open=params.get("force_open"),
-                force_closed=params.get("force_closed"),
-                force_allocations=params.get("force_allocations"),
-                warehouse_marker=params.get("warehouse_marker", "s"),
-                warehouse_markercolor=params.get("warehouse_markercolor", "red"),
-                warehouse_markersize=int(params.get("warehouse_markersize", 6)),
-                customer_marker=params.get("customer_marker", "s"),
-                customer_markercolor=params.get("customer_markercolor", "red"),
-                customer_markersize=int(params.get("customer_markersize", 6)),
-                **coverage_kwargs,
-            )
-            print("=====> Assignments <=====")
-            show_assignments(result)
-            # print(result)
+            try:
+                result = netopt(
+                    num_warehouses=num_wh.value,
+                    factories=None,
+                    warehouses=active_warehouses,
+                    customers=customers,
+                    distance=active_distance,
+                    distance_ranges=params.get("distance_ranges", []),
+                    objective=obj,
+                    objective_function=params.get("objective_function", "mindistance"),
+                    unit_transport_cost=params.get("unit_transport_cost", 0.1),
+                    mutually_exclusive=params.get("mutually_exclusive", []),
+                    plot=plot.value,
+                    plot_size=params.get("plot_size", (8, 12)),
+                    hide_inactive=hide_inactive.value,
+                    force_single_sourcing=params.get("force_single_sourcing", False),
+                    force_uncapacitated=params.get("force_uncapacitated", False),
+                    ignore_fixed_cost=params.get("ignore_fixed_cost", False),
+                    force_open=params.get("force_open"),
+                    force_closed=params.get("force_closed"),
+                    force_allocations=params.get("force_allocations"),
+                    warehouse_marker=params.get("warehouse_marker", "s"),
+                    warehouse_markercolor=params.get("warehouse_markercolor", "red"),
+                    warehouse_markersize=int(params.get("warehouse_markersize", 6)),
+                    customer_marker=params.get("customer_marker", "s"),
+                    customer_markercolor=params.get("customer_markercolor", "red"),
+                    customer_markersize=int(params.get("customer_markersize", 6)),
+                    **coverage_kwargs,
+                )
+            except ValueError as exc:
+                from IPython.display import display as _display, HTML as _HTML
+                _display(_HTML(
+                    f'<div style="background:#f8d7da;border:1px solid #f5c6cb;'
+                    f'padding:10px 14px;border-radius:4px;color:#721c24;margin-top:6px;">'
+                    f'<b>&#10060; Validation Error:</b> {exc}</div>'
+                ))
+                return
+            if result:
+                show_results_summary(result, warehouses=active_warehouses)
+                show_assignments(result)
 
     button.on_click(run_netopt)
 

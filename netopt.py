@@ -16,9 +16,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pprint
 from matplotlib.patches import Circle
-from data_structures import show_geo_map
 import requests
-from typing import Tuple, Optional, Dict, List, Set, Union
 
 dpi = 136
 # fig_x = 8
@@ -692,7 +690,7 @@ def plot_map(
 
     # Check if radius is defined and should be plotted
     if radius := options.get("radius", None):
-        print(f"PLOTTING RADIUS {radius}...")
+        print(f"PLOTTING RADIUS (approximated) {radius}...")
         for k, each in warehouses.items():
             if k in active_warehouses:
                 circle = Circle(
