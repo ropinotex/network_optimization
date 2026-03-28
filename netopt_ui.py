@@ -90,6 +90,62 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         disabled=True,
     )
 
+    feasibility_warning = widgets.HTML(
+        value="",
+        layout=widgets.Layout(display="none"),
+    )
+
+    # Cached minimum feasible radius for totalcover (computed once on first need)
+    _min_feasible_radius = [None]
+
+    def _get_min_feasible_radius():
+        if _min_feasible_radius[0] is not None:
+            return _min_feasible_radius[0]
+        _dist = distance
+        if _dist is None:
+            try:
+                from data_structures import calculate_dm
+                _dist = calculate_dm(warehouses, customers)
+            except Exception:
+                return None
+        warehouses_id = set(warehouses.keys())
+        customers_id = set(customers.keys())
+        min_r = max(
+            min(_dist[w, c] for w in warehouses_id)
+            for c in customers_id
+        )
+        _min_feasible_radius[0] = min_r
+        return min_r
+
+    def _update_feasibility_warning(r=None):
+        if objective.value != "totalcover":
+            feasibility_warning.layout.display = "none"
+            return
+        if r is None:
+            r = high_service_distance.value
+        min_r = _get_min_feasible_radius()
+        if min_r is None:
+            feasibility_warning.layout.display = "none"
+            return
+        if r < min_r:
+            feasibility_warning.value = (
+                f'<div style="background:#fff3cd;border:1px solid #ffc107;'
+                f'padding:6px 10px;border-radius:4px;color:#856404;margin-top:4px;">'
+                f'&#9888; <b>Warning:</b> radius {r:.1f} km is too small &mdash; '
+                f'at least one customer cannot reach any facility. '
+                f'Minimum feasible radius: <b>{min_r:.1f} km</b>. '
+                f'The model will be infeasible.'
+                f'</div>'
+            )
+            feasibility_warning.layout.display = ""
+        else:
+            feasibility_warning.layout.display = "none"
+
+    high_service_distance.observe(
+        lambda change: _update_feasibility_warning(change["new"]),
+        names="value",
+    )
+
     plot = widgets.Checkbox(
         description="Show plot",
         value=True,
@@ -260,6 +316,8 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         else:
             high_service_distance.disabled = True
 
+        _update_feasibility_warning()
+
         # force_uncapacitated and force_single_sourcing:
         # - coverage models are always uncapacitated and single-sourced
         # - FLP variants have fixed values
@@ -406,6 +464,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             num_wh,
             objective_function,
             high_service_distance,
+            feasibility_warning,
             distance_ranges,
             force_single_sourcing,
             force_uncapacitated,
