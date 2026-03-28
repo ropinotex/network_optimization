@@ -42,6 +42,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         options=[
             ("p-median", "p-median"),
             ("p-cover", "p-cover"),
+            ("Total cover (min. facilities)", "totalcover"),
             ("UFLP", "UFLP"),
             ("CFLP", "CFLP"),
         ],
@@ -82,8 +83,8 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
     )
 
     high_service_distance = widgets.FloatText(
-        description="Service radius (R for p-cover)",
-        value=1000,
+        description="Coverage radius (km)",
+        value=500,
         layout=form_layout,
         style=form_style,
         disabled=True,
@@ -238,43 +239,47 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
 
     # Function to update widget states based on objective selection
     def on_objective_change(change):
-        # Enable num_wh only for p-median and p-cover
-        if change["new"] in ["p-median", "p-cover"]:
-            num_wh.disabled = False
-        else:
-            num_wh.disabled = True
+        new_obj = change["new"]
 
-        if change["new"] == "p-median":
+        # num_wh: only meaningful for p-median and p-cover (totalcover finds minimum automatically)
+        num_wh.disabled = new_obj not in ("p-median", "p-cover")
+
+        # objective_function sub-selector: only for p-median
+        if new_obj == "p-median":
             objective_function.disabled = False
-            force_uncapacitated.disabled = False
-            # ignore_fixed_cost.value = True
         else:
             objective_function.disabled = True
             objective_function.value = "mindistance"
 
-        # You can also update other widgets visibility here
-        # For example, show high_service_distance only for p-cover
-        if change["new"] == "p-cover":
+        # Coverage/service radius: enabled for p-cover and totalcover
+        if new_obj in ("p-cover", "totalcover"):
             high_service_distance.disabled = False
+            high_service_distance.description = (
+                "Service radius R (km)" if new_obj == "p-cover" else "Coverage radius R (km)"
+            )
         else:
             high_service_distance.disabled = True
-            high_service_distance.value = 0
 
-        if change["new"] == "UFLP":
+        # force_uncapacitated and force_single_sourcing:
+        # - coverage models are always uncapacitated and single-sourced
+        # - FLP variants have fixed values
+        # - p-median is user-controlled
+        if new_obj in ("p-cover", "totalcover"):
             force_uncapacitated.value = True
             force_uncapacitated.disabled = True
-
-        if change["new"] == "CFLP":
+            force_single_sourcing.value = True
+            force_single_sourcing.disabled = True
+        elif new_obj == "UFLP":
+            force_uncapacitated.value = True
+            force_uncapacitated.disabled = True
+            force_single_sourcing.disabled = False
+        elif new_obj == "CFLP":
             force_uncapacitated.value = False
             force_uncapacitated.disabled = True
-
-        # # For UFLP and CFLP, enable/disable appropriate options
-        # if change["new"] == "mincost":
-        #     force_uncapacitated.layout.display = "block"
-        #     ignore_fixed_cost.layout.display = "block"
-        # else:
-        #     force_uncapacitated.layout.display = "none"
-        #     ignore_fixed_cost.layout.display = "none"
+            force_single_sourcing.disabled = False
+        else:
+            force_uncapacitated.disabled = False
+            force_single_sourcing.disabled = False
 
     # Register the observer
     objective.observe(on_objective_change, names="value")
@@ -341,16 +346,29 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 print("plot_size must be a tuple")
                 return
 
+            obj = params.get("objective", "p-median")
+
+            # Validate coverage/service radius for coverage problems
+            if obj in ("p-cover", "totalcover") and not params.get("high_service_distance"):
+                print("Error: coverage radius must be > 0 for coverage problems")
+                return
+
+            # Build coverage-specific keyword arguments
+            coverage_kwargs = {}
+            if obj == "p-cover":
+                coverage_kwargs["high_service_distance"] = params.get("high_service_distance")
+            elif obj == "totalcover":
+                coverage_kwargs["coverage_distance"] = params.get("high_service_distance")
+
             result = netopt(
                 num_warehouses=num_wh.value,
                 factories=None,
                 warehouses=warehouses,
                 customers=customers,
-                distance=None,
+                distance=distance,
                 distance_ranges=params.get("distance_ranges", []),
-                objective=params.get("objective", "p-median"),
+                objective=obj,
                 objective_function=params.get("objective_function", "mindistance"),
-                high_service_distance=params.get("high_service_distance", None),
                 unit_transport_cost=params.get("unit_transport_cost", 0.1),
                 mutually_exclusive=params.get("mutually_exclusive", []),
                 plot=plot.value,
@@ -368,6 +386,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 customer_marker=params.get("customer_marker", "s"),
                 customer_markercolor=params.get("customer_markercolor", "red"),
                 customer_markersize=int(params.get("customer_markersize", 6)),
+                **coverage_kwargs,
             )
             print("=====> Assignments <=====")
             show_assignments(result)
