@@ -95,6 +95,11 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         layout=widgets.Layout(display="none"),
     )
 
+    capacity_warning = widgets.HTML(
+        value="",
+        layout=widgets.Layout(display="none"),
+    )
+
     # Cached minimum feasible radius for totalcover (computed once on first need)
     _min_feasible_radius = [None]
 
@@ -335,9 +340,22 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             force_uncapacitated.value = False
             force_uncapacitated.disabled = True
             force_single_sourcing.disabled = False
+            missing = [w_id for w_id, w in warehouses.items() if not getattr(w, "capacity", None)]
+            if missing:
+                capacity_warning.value = (
+                    f'<div style="background:#fff3cd;border:1px solid #ffc107;'
+                    f'padding:6px 10px;border-radius:4px;color:#856404;margin-top:4px;">'
+                    f'&#9888; <b>Warning:</b> {len(missing)} warehouse(s) have no capacity set: '
+                    f'{missing}. They will be <b>excluded</b> from the CFLP model.'
+                    f'</div>'
+                )
+                capacity_warning.layout.display = ""
+            else:
+                capacity_warning.layout.display = "none"
         else:
             force_uncapacitated.disabled = False
             force_single_sourcing.disabled = False
+            capacity_warning.layout.display = "none"
 
     # Register the observer
     objective.observe(on_objective_change, names="value")
@@ -411,6 +429,20 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 print("Error: coverage radius must be > 0 for coverage problems")
                 return
 
+            # For CFLP, discard warehouses with no capacity
+            active_warehouses = warehouses
+            active_distance = distance
+            if obj == "CFLP":
+                active_warehouses = {
+                    w_id: w for w_id, w in warehouses.items()
+                    if getattr(w, "capacity", None)
+                }
+                if distance:
+                    active_distance = {
+                        k: v for k, v in distance.items()
+                        if k[0] in active_warehouses
+                    }
+
             # Build coverage-specific keyword arguments
             coverage_kwargs = {}
             if obj == "p-cover":
@@ -421,9 +453,9 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             result = netopt(
                 num_warehouses=num_wh.value,
                 factories=None,
-                warehouses=warehouses,
+                warehouses=active_warehouses,
                 customers=customers,
-                distance=distance,
+                distance=active_distance,
                 distance_ranges=params.get("distance_ranges", []),
                 objective=obj,
                 objective_function=params.get("objective_function", "mindistance"),
@@ -468,6 +500,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             distance_ranges,
             force_single_sourcing,
             force_uncapacitated,
+            capacity_warning,
             ignore_fixed_cost,
             force_open,
             force_closed,
