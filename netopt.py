@@ -511,7 +511,7 @@ def netopt(
             assigned_customers = 0
 
         print(
-            f"ID: {w:3} City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11.0f} units"
+            f"ID2: {w:3} City: {warehouses[w][1]:20} State: {warehouses[w][2]:6} Num. customers: {assigned_customers:3}  Outflow: {outflow:11.0f} units  Fixed cost: {warehouses[w].fixed_cost:10.0f}  Total cost: {warehouses[w].fixed_cost + outflow * unit_transport_cost * distance[w, c]:10.0f}"
         )
     print()
     print(f"Total outflow: {total_outflow:.0f} units")

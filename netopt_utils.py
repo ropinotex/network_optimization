@@ -19,7 +19,7 @@ def print_solution(data):
     print_dict(data)
 
 
-def show_results_summary(result: dict, warehouses: dict = None):
+def show_results_summary(result: dict, warehouses: dict = None, unit_transport_cost: float = 0):
     """Display an HTML summary card of the optimization results.
     :param result: the solution dictionary returned by the optimizer
     :param warehouses: optional dict of Warehouse objects (needed for state and capacity info)
@@ -55,6 +55,24 @@ def show_results_summary(result: dict, warehouses: dict = None):
         rows.append(
             ("Avg distance (unweighted)", f"{result['avg_customer_distance']:.1f} km")
         )
+    if "std_customer_distance" in result:
+        rows.append(
+            ("Std dev of customer distances", f"{result['std_customer_distance']:.1f} km")
+        )
+    if "p25_customer_distance" in result:
+        rows.append((
+            "Percentiles (demand-weighted)",
+            f"P25: {result['p25_customer_distance']:.1f} km"
+            f"&ensp;P50: {result['p50_customer_distance']:.1f} km"
+            f"&ensp;P75: {result['p75_customer_distance']:.1f} km",
+        ))
+    if "p25_customer_distance_unweighted" in result:
+        rows.append((
+            "Percentiles (by # customers)",
+            f"P25: {result['p25_customer_distance_unweighted']:.1f} km"
+            f"&ensp;P50: {result['p50_customer_distance_unweighted']:.1f} km"
+            f"&ensp;P75: {result['p75_customer_distance_unweighted']:.1f} km",
+        ))
     if "most_distant_customer" in result:
         rows.append(
             ("Most distant customer", f"{result['most_distant_customer']:.1f} km")
@@ -63,6 +81,52 @@ def show_results_summary(result: dict, warehouses: dict = None):
     multi = result.get("multi_sourced_customers", [])
     if multi:
         rows.append(("Multi-sourced customers", ", ".join(str(c) for c in multi)))
+
+    # Cost per unit served
+    assignments = result.get("customers_assignment", [])
+    if assignments:
+        unit_tc = unit_transport_cost or 0
+        active_wh_ids = result.get("active_warehouses_id", set())
+        has_transport_cost = unit_tc > 0
+        has_fixed_costs = bool(
+            warehouses
+            and any(
+                (getattr(warehouses[wid], "fixed_cost", 0) or 0) > 0
+                for wid in active_wh_ids
+                if wid in warehouses
+            )
+        )
+        if not has_transport_cost and not has_fixed_costs:
+            rows.append((
+                "Cost per unit served",
+                '<span style="color:#888;font-style:italic">'
+                "N/A &mdash; no unit transport cost or fixed costs provided"
+                "</span>",
+            ))
+        else:
+            total_demand = sum(rec["Customer Demand"] for rec in assignments)
+            if total_demand > 0:
+                total_cost = 0.0
+                cost_parts = []
+                if has_transport_cost:
+                    tc = sum(rec["Flow"] * rec["Distance"] for rec in assignments) * unit_tc
+                    total_cost += tc
+                    cost_parts.append(f"transport: {tc:,.0f}")
+                if has_fixed_costs:
+                    fc = sum(
+                        (getattr(warehouses[wid], "fixed_cost", 0) or 0)
+                        for wid in active_wh_ids
+                        if wid in warehouses
+                    )
+                    total_cost += fc
+                    cost_parts.append(f"fixed: {fc:,.0f}")
+                cpu = total_cost / total_demand
+                rows.append((
+                    "Cost per unit served",
+                    f"<b>{cpu:.4f}</b>"
+                    f'&nbsp;<span style="color:#888;font-size:12px">'
+                    f"({', '.join(cost_parts)})</span>",
+                ))
 
     metrics_html = "".join(
         f"<tr>"

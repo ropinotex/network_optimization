@@ -504,7 +504,11 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 ))
                 return
             if result:
-                show_results_summary(result, warehouses=active_warehouses)
+                show_results_summary(
+                    result,
+                    warehouses=active_warehouses,
+                    unit_transport_cost=params.get("unit_transport_cost", 0),
+                )
                 show_assignments(result)
 
     button.on_click(run_netopt)

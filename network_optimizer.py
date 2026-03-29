@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
+import numpy as np
 import pulp as pl
 import pandas as pd
 
@@ -507,6 +508,12 @@ class NetworkOptimizer(ABC):
                 df_cu["Weighted_Distance"].sum() / df_cu["Customer Demand"].sum()
             )
 
+            # Demand-weighted percentiles: sort by distance, accumulate demand fraction
+            _sorted = df_cu.sort_values("Distance")
+            _cum_demand = _sorted["Customer Demand"].cumsum() / _sorted["Customer Demand"].sum()
+            _distances = _sorted["Distance"].values
+            _cum = _cum_demand.values
+
             self.solution = {
                 "status": pl.LpStatus[self.model.status],
                 "objective_value": pl.value(self.model.objective),
@@ -518,6 +525,13 @@ class NetworkOptimizer(ABC):
                 "most_distant_customer": df_cu["Distance"].max(),
                 "demand_perc_by_ranges": demand_perc_by_ranges,
                 "avg_customer_distance": df_cu["Distance"].mean(),
+                "std_customer_distance": df_cu["Distance"].std(),
+                "p25_customer_distance": float(np.interp(0.25, _cum, _distances)),
+                "p50_customer_distance": float(np.interp(0.50, _cum, _distances)),
+                "p75_customer_distance": float(np.interp(0.75, _cum, _distances)),
+                "p25_customer_distance_unweighted": df_cu["Distance"].quantile(0.25),
+                "p50_customer_distance_unweighted": df_cu["Distance"].quantile(0.50),
+                "p75_customer_distance_unweighted": df_cu["Distance"].quantile(0.75),
                 "multi_sourced_customers": list(self.multi_sourced.keys()),
                 "customers_assignment": customers_assignment,
             }
@@ -600,8 +614,13 @@ class NetworkOptimizer(ABC):
                 assigned_customers = 0
 
             print(
-                f"ID: {w:3} City: {self.warehouses[w].city:20} State: {self.warehouses[w].state:6} "
-                f"Num. customers: {assigned_customers:3}  Outflow: {outflow:11.0f} units"
+                " | ".join(
+                    [
+                        f"ID: {w:3} | City: {self.warehouses[w].city:20} | State: {self.warehouses[w].state:6}",
+                        f"Num. customers: {assigned_customers:3} | Outflow: {outflow:11.0f} units",
+                        f"Fixed cost: {getattr(self.warehouses[w], 'fixed_cost', 0):10.0f}",
+                    ]
+                )
             )
 
         print(f"\nTotal outflow: {total_outflow:.0f} units")
@@ -640,6 +659,21 @@ class NetworkOptimizer(ABC):
                 f"Average customers distance (no weights): {self.solution['avg_customer_distance']:.1f} km"
             )
             print(
+                f"Std dev of customer distances: {self.solution['std_customer_distance']:.1f} km"
+            )
+            print(
+                f"Percentile distances (demand-weighted): "
+                f"P25={self.solution['p25_customer_distance']:.1f} km  "
+                f"P50={self.solution['p50_customer_distance']:.1f} km  "
+                f"P75={self.solution['p75_customer_distance']:.1f} km"
+            )
+            print(
+                f"Percentile distances (by # customers):  "
+                f"P25={self.solution['p25_customer_distance_unweighted']:.1f} km  "
+                f"P50={self.solution['p50_customer_distance_unweighted']:.1f} km  "
+                f"P75={self.solution['p75_customer_distance_unweighted']:.1f} km"
+            )
+            print(
                 f"Average weighted distance: {self.solution['avg_weighted_distance']:.1f} km"
             )
 
@@ -648,6 +682,61 @@ class NetworkOptimizer(ABC):
             print("\nCustomers served by more than one warehouse")
             for k, v in self.multi_sourced.items():
                 print(f"- Customer {k} is served by {v} warehouses")
+
+        self._print_cost_per_unit()
+
+    def _print_cost_per_unit(self):
+        """Print cost per unit served (total cost / total demand).
+
+        Uses unit_transport_cost and warehouse fixed costs when available.
+        Prints an info message if neither cost component is provided.
+        """
+        assignments = self.solution.get("customers_assignment", [])
+        if not assignments:
+            return
+
+        unit_tc = getattr(self, "unit_transport_cost", 0) or 0
+        ignore_fc = getattr(self, "ignore_fixed_cost", True)
+        has_fixed_costs = not ignore_fc and any(
+            (getattr(self.warehouses[w], "fixed_cost", 0) or 0) > 0
+            for w in self.active_warehouses
+        )
+        has_transport_cost = unit_tc > 0
+
+        if not has_transport_cost and not has_fixed_costs:
+            print(
+                "\nCost per unit served: N/A "
+                "(no unit transport cost or facility fixed costs provided)"
+            )
+            return
+
+        total_demand = sum(rec["Customer Demand"] for rec in assignments)
+        if total_demand == 0:
+            return
+
+        total_cost = 0.0
+        cost_parts = []
+
+        if has_transport_cost:
+            transport_cost = (
+                sum(rec["Flow"] * rec["Distance"] for rec in assignments) * unit_tc
+            )
+            total_cost += transport_cost
+            cost_parts.append(f"transport: {transport_cost:,.0f}")
+
+        if has_fixed_costs:
+            fixed_cost = sum(
+                (getattr(self.warehouses[w], "fixed_cost", 0) or 0)
+                for w in self.active_warehouses
+            )
+            total_cost += fixed_cost
+            cost_parts.append(f"fixed: {fixed_cost:,.0f}")
+
+        cost_per_unit = total_cost / total_demand
+        print(
+            f"\nCost per unit served: {cost_per_unit:.4f}"
+            f"  ({', '.join(cost_parts)}; total demand: {total_demand:,.0f} units)"
+        )
 
 
 class PMedianOptimizer(NetworkOptimizer):
