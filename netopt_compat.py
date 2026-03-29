@@ -25,7 +25,7 @@ def netopt(
     hide_inactive: bool = False,
     hide_flows: bool = False,
     solver_log: bool = False,
-    unit_transport_cost: float = 0.1,
+    unit_transport_cost: float = 0.0001,
     mutually_exclusive: list | None = None,
     **kwargs,
 ):

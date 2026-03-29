@@ -510,7 +510,9 @@ class NetworkOptimizer(ABC):
 
             # Demand-weighted percentiles: sort by distance, accumulate demand fraction
             _sorted = df_cu.sort_values("Distance")
-            _cum_demand = _sorted["Customer Demand"].cumsum() / _sorted["Customer Demand"].sum()
+            _cum_demand = (
+                _sorted["Customer Demand"].cumsum() / _sorted["Customer Demand"].sum()
+            )
             _distances = _sorted["Distance"].values
             _cum = _cum_demand.values
 
@@ -755,7 +757,7 @@ class PMedianOptimizer(NetworkOptimizer):
         distance: dict | None = None,
         force_uncapacitated: bool = False,
         force_single_sourcing: bool = True,
-        unit_transport_cost: float = 0.1,
+        unit_transport_cost: float = 0.001,
         ignore_fixed_cost: bool = True,
         **kwargs,
     ):
@@ -1223,7 +1225,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
         warehouses: dict,
         customers: dict,
         distance: dict,
-        unit_transport_cost: float = 0.1,
+        unit_transport_cost: float = 0.001,
         ignore_fixed_cost: bool = False,
         force_single_sourcing: bool = True,
         **kwargs,
@@ -1339,7 +1341,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
         warehouses: dict,
         customers: dict,
         distance: dict,
-        unit_transport_cost: float = 0.1,
+        unit_transport_cost: float = 0.001,
         ignore_fixed_cost: bool = False,
         force_single_sourcing: bool = True,
         **kwargs,

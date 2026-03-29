@@ -110,15 +110,13 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         if _dist is None:
             try:
                 from data_structures import calculate_dm
+
                 _dist = calculate_dm(warehouses, customers)
             except Exception:
                 return None
         warehouses_id = set(warehouses.keys())
         customers_id = set(customers.keys())
-        min_r = max(
-            min(_dist[w, c] for w in warehouses_id)
-            for c in customers_id
-        )
+        min_r = max(min(_dist[w, c] for w in warehouses_id) for c in customers_id)
         _min_feasible_radius[0] = min_r
         return min_r
 
@@ -136,11 +134,11 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             feasibility_warning.value = (
                 f'<div style="background:#fff3cd;border:1px solid #ffc107;'
                 f'padding:6px 10px;border-radius:4px;color:#856404;margin-top:4px;">'
-                f'&#9888; <b>Warning:</b> radius {r:.1f} km is too small &mdash; '
-                f'at least one customer cannot reach any facility. '
-                f'Minimum feasible radius: <b>{min_r:.1f} km</b>. '
-                f'The model will be infeasible.'
-                f'</div>'
+                f"&#9888; <b>Warning:</b> radius {r:.1f} km is too small &mdash; "
+                f"at least one customer cannot reach any facility. "
+                f"Minimum feasible radius: <b>{min_r:.1f} km</b>. "
+                f"The model will be infeasible."
+                f"</div>"
             )
             feasibility_warning.layout.display = ""
         else:
@@ -220,7 +218,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
 
     unit_transport_cost = widgets.FloatText(
         description="Unit transport cost",
-        value=0.1,
+        value=0.001,
         layout=form_layout,
         style=form_style,
     )
@@ -324,7 +322,9 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         if new_obj in ("p-cover", "totalcover"):
             high_service_distance.disabled = False
             high_service_distance.description = (
-                "Service radius R (km)" if new_obj == "p-cover" else "Coverage radius R (km)"
+                "Service radius R (km)"
+                if new_obj == "p-cover"
+                else "Coverage radius R (km)"
             )
         else:
             high_service_distance.disabled = True
@@ -355,14 +355,18 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             force_uncapacitated.value = False
             force_uncapacitated.disabled = True
             force_single_sourcing.disabled = False
-            missing = [w_id for w_id, w in warehouses.items() if not getattr(w, "capacity", None)]
+            missing = [
+                w_id
+                for w_id, w in warehouses.items()
+                if not getattr(w, "capacity", None)
+            ]
             if missing:
                 capacity_warning.value = (
                     f'<div style="background:#fff3cd;border:1px solid #ffc107;'
                     f'padding:6px 10px;border-radius:4px;color:#856404;margin-top:4px;">'
-                    f'&#9888; <b>Warning:</b> {len(missing)} warehouse(s) have no capacity set: '
-                    f'{missing}. They will be <b>excluded</b> from the CFLP model.'
-                    f'</div>'
+                    f"&#9888; <b>Warning:</b> {len(missing)} warehouse(s) have no capacity set: "
+                    f"{missing}. They will be <b>excluded</b> from the CFLP model."
+                    f"</div>"
                 )
                 capacity_warning.layout.display = ""
             else:
@@ -440,7 +444,9 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             obj = params.get("objective", "p-median")
 
             # Validate coverage/service radius for coverage problems
-            if obj in ("p-cover", "totalcover") and not params.get("high_service_distance"):
+            if obj in ("p-cover", "totalcover") and not params.get(
+                "high_service_distance"
+            ):
                 print("Error: coverage radius must be > 0 for coverage problems")
                 return
 
@@ -449,22 +455,28 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             active_distance = distance
             if obj == "CFLP":
                 active_warehouses = {
-                    w_id: w for w_id, w in warehouses.items()
+                    w_id: w
+                    for w_id, w in warehouses.items()
                     if getattr(w, "capacity", None)
                 }
                 if distance:
                     active_distance = {
-                        k: v for k, v in distance.items()
-                        if k[0] in active_warehouses
+                        k: v for k, v in distance.items() if k[0] in active_warehouses
                     }
 
             # Build coverage-specific keyword arguments
             coverage_kwargs = {}
             if obj == "p-cover":
-                coverage_kwargs["high_service_distance"] = params.get("high_service_distance")
-                coverage_kwargs["assign_uncovered_to_nearest"] = assign_uncovered_to_nearest.value
+                coverage_kwargs["high_service_distance"] = params.get(
+                    "high_service_distance"
+                )
+                coverage_kwargs["assign_uncovered_to_nearest"] = (
+                    assign_uncovered_to_nearest.value
+                )
             elif obj == "totalcover":
-                coverage_kwargs["coverage_distance"] = params.get("high_service_distance")
+                coverage_kwargs["coverage_distance"] = params.get(
+                    "high_service_distance"
+                )
 
             try:
                 result = netopt(
@@ -497,11 +509,14 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 )
             except ValueError as exc:
                 from IPython.display import display as _display, HTML as _HTML
-                _display(_HTML(
-                    f'<div style="background:#f8d7da;border:1px solid #f5c6cb;'
-                    f'padding:10px 14px;border-radius:4px;color:#721c24;margin-top:6px;">'
-                    f'<b>&#10060; Validation Error:</b> {exc}</div>'
-                ))
+
+                _display(
+                    _HTML(
+                        f'<div style="background:#f8d7da;border:1px solid #f5c6cb;'
+                        f'padding:10px 14px;border-radius:4px;color:#721c24;margin-top:6px;">'
+                        f"<b>&#10060; Validation Error:</b> {exc}</div>"
+                    )
+                )
                 return
             if result:
                 show_results_summary(

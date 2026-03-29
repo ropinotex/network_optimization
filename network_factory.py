@@ -28,7 +28,7 @@ def create_network_optimizer(
     force_uncapacitated: bool = False,
     force_allocations: list = None,
     ignore_fixed_cost: bool = False,
-    unit_transport_cost: float = 0.1,
+    unit_transport_cost: float = 0.001,
     distance_ranges: list = None,
     mutually_exclusive: list = None,
     **kwargs,
