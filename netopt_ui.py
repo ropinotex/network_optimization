@@ -13,17 +13,57 @@ def parse(txt):
         raise excp
 
 
+class OptimizationResult:
+    """Container for optimization results from netopt_ui.
+
+    Usage::
+
+        r = netopt_ui(warehouses, customers)
+        # ... click Solve ...
+        result = r.result  # dict with solution data
+    """
+
+    def __init__(self):
+        self._result = None
+        self._solved = False
+
+    @property
+    def result(self):
+        if not self._solved:
+            raise ValueError(
+                "No solution yet. Click Solve first, then access .result in a new cell."
+            )
+        return self._result
+
+    def _set(self, value):
+        self._result = value
+        self._solved = True
+
+    @property
+    def is_solved(self):
+        return self._solved
+
+    def __repr__(self):
+        if self._solved:
+            status = (
+                self._result.get("status", "Unknown") if self._result else "No solution"
+            )
+            return f"OptimizationResult(solved=True, status={status})"
+        return "OptimizationResult(solved=False — click Solve, then access .result)"
+
+
 def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
     """User interface for the netopt function.
     Required parameters:
     - warehouses: dict of Warehouse objects
     - customers: dict of Customer objects
 
-    Call as
+    Returns an OptimizationResult container. After clicking Solve,
+    access the solution via ``.result`` in a subsequent cell::
 
-    netopt_ui(warehouses, customers)
-
-    where warehouses and customers contain the problem's data.
+        r = netopt_ui(warehouses, customers)
+        # ... click Solve ...
+        result = r.result
 
     """
 
@@ -318,6 +358,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
     # )
 
     output = widgets.Output()
+    container = OptimizationResult()
 
     # Function to update widget states based on objective selection
     def on_objective_change(change):
@@ -534,6 +575,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 )
                 return
             if result:
+                container._set(result)
                 show_results_summary(
                     result,
                     warehouses=active_warehouses,
@@ -607,6 +649,8 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
     ui = widgets.HBox([sec1, sec2])
 
     display(ui, button, output)
+
+    return container
 
 
 def edit_warehouse_ui(warehouses: dict, warehouse_id: int) -> dict:
