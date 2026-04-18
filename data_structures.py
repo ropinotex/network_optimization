@@ -18,8 +18,13 @@ Warehouse = namedtuple(
     "Warehouse", "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost"
 )
 
+
+Facility = namedtuple(
+    "Facility", "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost"
+)
+
 Customer = namedtuple(
-    "Customer", "name, city, state, zipcode, latitude, longitude, demand"
+    "Customer", "name, city, zipcode, state, latitude, longitude, demand"
 )
 
 Factory = namedtuple(
@@ -541,3 +546,73 @@ def add_customer_from_data(
     )
 
     add_customer(customers=customers, new_customer=new_customer)
+
+
+def generate_data(data, source: str, dest, column_map: dict = None) -> dict:
+    """Convert a DataFrame from a spreadsheet into a dict of named tuples.
+
+    :param data: dict of {sheet_name: DataFrame} or a SpreadsheetResult
+    :param source: sheet name key to select the DataFrame
+    :param dest: namedtuple class (Warehouse, Customer, Facility, Factory)
+    :param column_map: optional {field_name: column_name} for explicit mapping
+    :return: dict of {int: namedtuple} indexed sequentially from 0
+
+    Column matching (in priority order):
+      1. Explicit column_map entries
+      2. Exact column name match
+      3. Case-insensitive match (spaces/underscores normalized)
+
+    Example::
+
+        from data_structures import Facility, generate_data
+        loader = get_data_from_spreadsheet()
+        # ... upload file with a "facilities" sheet ...
+        facilities = generate_data(loader, "facilities", Facility)
+    """
+    # AIDEV-NOTE: accepts both SpreadsheetResult and plain dict
+    if hasattr(data, "result"):
+        data = data.result
+
+    if not isinstance(data, dict):
+        raise TypeError(
+            f"Expected a dict of DataFrames or SpreadsheetResult, got {type(data).__name__}"
+        )
+
+    if source not in data:
+        available = ", ".join(str(k) for k in data.keys())
+        raise KeyError(f"Sheet '{source}' not found. Available sheets: {available}")
+
+    df = data[source]
+    fields = dest._fields
+
+    # Build mapping: namedtuple field -> DataFrame column name
+    _norm = lambda s: str(s).lower().replace(" ", "_").replace("-", "_")
+    df_cols_normalized = {_norm(col): col for col in df.columns}
+
+    mapping = {}
+    for field in fields:
+        if column_map and field in column_map:
+            mapping[field] = column_map[field]
+        elif field in df.columns:
+            mapping[field] = field
+        elif field in df_cols_normalized:
+            mapping[field] = df_cols_normalized[field]
+        else:
+            mapping[field] = None
+
+    result = {}
+    for n, (_, row) in enumerate(df.iterrows()):
+        values = {}
+        for field in fields:
+            col = mapping[field]
+            if col is not None and col in df.columns:
+                val = row[col]
+                values[field] = None if pd.isna(val) else val
+            else:
+                # Sensible defaults for unmapped fields
+                values[field] = (
+                    0.0 if field in ("capacity", "fixed_cost", "demand") else ""
+                )
+        result[n] = dest(**values)
+
+    return result

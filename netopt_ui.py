@@ -27,6 +27,21 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
 
     """
 
+    if not distance:
+        try:
+            from data_structures import calculate_dm
+
+            print(
+                "No distance matrix provided, calculating from coordinates...", end=" "
+            )
+            distance = calculate_dm(warehouses, customers)
+            print("done!")
+        except Exception:
+            print(
+                "No distance matrix provided and failed to calculate it from coordinates."
+            )
+            distance = None
+
     # Define a consistent layout for all form elements
     form_layout = widgets.Layout(
         width="100%"  # Full width for the widget itself

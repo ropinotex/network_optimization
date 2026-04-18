@@ -1,9 +1,11 @@
+import io
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.patches import Circle
 import pprint
 from IPython.display import display, HTML
 
+from data_structures import Customer, Warehouse, generate_data
 
 dpi = 136
 
@@ -19,7 +21,9 @@ def print_solution(data):
     print_dict(data)
 
 
-def show_results_summary(result: dict, warehouses: dict = None, unit_transport_cost: float = 0):
+def show_results_summary(
+    result: dict, warehouses: dict = None, unit_transport_cost: float = 0
+):
     """Display an HTML summary card of the optimization results.
     :param result: the solution dictionary returned by the optimizer
     :param warehouses: optional dict of Warehouse objects (needed for state and capacity info)
@@ -57,22 +61,29 @@ def show_results_summary(result: dict, warehouses: dict = None, unit_transport_c
         )
     if "std_customer_distance" in result:
         rows.append(
-            ("Std dev of customer distances", f"{result['std_customer_distance']:.1f} km")
+            (
+                "Std dev of customer distances",
+                f"{result['std_customer_distance']:.1f} km",
+            )
         )
     if "p25_customer_distance" in result:
-        rows.append((
-            "Percentiles (demand-weighted)",
-            f"P25: {result['p25_customer_distance']:.1f} km"
-            f"&ensp;P50: {result['p50_customer_distance']:.1f} km"
-            f"&ensp;P75: {result['p75_customer_distance']:.1f} km",
-        ))
+        rows.append(
+            (
+                "Percentiles (demand-weighted)",
+                f"P25: {result['p25_customer_distance']:.1f} km"
+                f"&ensp;P50: {result['p50_customer_distance']:.1f} km"
+                f"&ensp;P75: {result['p75_customer_distance']:.1f} km",
+            )
+        )
     if "p25_customer_distance_unweighted" in result:
-        rows.append((
-            "Percentiles (by # customers)",
-            f"P25: {result['p25_customer_distance_unweighted']:.1f} km"
-            f"&ensp;P50: {result['p50_customer_distance_unweighted']:.1f} km"
-            f"&ensp;P75: {result['p75_customer_distance_unweighted']:.1f} km",
-        ))
+        rows.append(
+            (
+                "Percentiles (by # customers)",
+                f"P25: {result['p25_customer_distance_unweighted']:.1f} km"
+                f"&ensp;P50: {result['p50_customer_distance_unweighted']:.1f} km"
+                f"&ensp;P75: {result['p75_customer_distance_unweighted']:.1f} km",
+            )
+        )
     if "most_distant_customer" in result:
         rows.append(
             ("Most distant customer", f"{result['most_distant_customer']:.1f} km")
@@ -97,19 +108,24 @@ def show_results_summary(result: dict, warehouses: dict = None, unit_transport_c
             )
         )
         if not has_transport_cost and not has_fixed_costs:
-            rows.append((
-                "Cost per unit served",
-                '<span style="color:#888;font-style:italic">'
-                "N/A &mdash; no unit transport cost or fixed costs provided"
-                "</span>",
-            ))
+            rows.append(
+                (
+                    "Cost per unit served",
+                    '<span style="color:#888;font-style:italic">'
+                    "N/A &mdash; no unit transport cost or fixed costs provided"
+                    "</span>",
+                )
+            )
         else:
             total_demand = sum(rec["Customer Demand"] for rec in assignments)
             if total_demand > 0:
                 total_cost = 0.0
                 cost_parts = []
                 if has_transport_cost:
-                    tc = sum(rec["Flow"] * rec["Distance"] for rec in assignments) * unit_tc
+                    tc = (
+                        sum(rec["Flow"] * rec["Distance"] for rec in assignments)
+                        * unit_tc
+                    )
                     total_cost += tc
                     cost_parts.append(f"transport: {tc:,.0f}")
                 if has_fixed_costs:
@@ -121,12 +137,14 @@ def show_results_summary(result: dict, warehouses: dict = None, unit_transport_c
                     total_cost += fc
                     cost_parts.append(f"fixed: {fc:,.0f}")
                 cpu = total_cost / total_demand
-                rows.append((
-                    "Cost per unit served",
-                    f"<b>{cpu:.4f}</b>"
-                    f'&nbsp;<span style="color:#888;font-size:12px">'
-                    f"({', '.join(cost_parts)})</span>",
-                ))
+                rows.append(
+                    (
+                        "Cost per unit served",
+                        f"<b>{cpu:.4f}</b>"
+                        f'&nbsp;<span style="color:#888;font-size:12px">'
+                        f"({', '.join(cost_parts)})</span>",
+                    )
+                )
 
     metrics_html = "".join(
         f"<tr>"
@@ -454,4 +472,119 @@ def plot_map(
     fig.canvas.mpl_connect("motion_notify_event", hover)
 
     plt.show()
-    ############
+
+
+def running_in_colab() -> bool:
+    """Detect if the code is running in Google Colab environment
+    :return: True if running in Colab, False otherwise
+    """
+    try:
+        import google.colab  # type: ignore
+
+        return True
+    except ImportError:
+        return False
+
+
+class SpreadsheetResult:
+    """Container for spreadsheet upload results.
+
+    Usage (both Colab and local):
+        loader = get_data_from_spreadsheet()
+        # ... upload file via widget / Colab dialog ...
+        df = loader.result   # DataFrame or dict of DataFrames
+    """
+
+    def __init__(self):
+        self._result = None
+        self._loaded = False
+
+    @property
+    def result(self):
+        if not self._loaded:
+            raise ValueError(
+                "No file loaded yet. Upload a file first, then access .result in a new cell."
+            )
+        return self._result
+
+    def _set(self, value):
+        self._result = value
+        self._loaded = True
+
+    @property
+    def is_loaded(self):
+        return self._loaded
+
+    def __repr__(self):
+        if self._loaded:
+            return f"SpreadsheetResult(loaded=True, type={type(self._result).__name__})"
+        return "SpreadsheetResult(loaded=False — upload a file, then access .result)"
+
+
+def load_data_from_spreadsheet(**kwargs):
+    """Upload and read an Excel spreadsheet in a Jupyter notebook.
+
+    Returns a SpreadsheetResult containing a dict of {sheet_name: DataFrame}
+    for all sheets. After uploading a file, access the data
+    via ``.result`` in a subsequent cell::
+
+        loader = get_data_from_spreadsheet()
+        # ... upload the file ...
+        sheets = loader.result          # dict of DataFrames
+        df = loader.result["Sheet1"]    # single sheet
+    """
+    container = SpreadsheetResult()
+
+    if running_in_colab():
+        from google.colab import files
+
+        uploaded = files.upload()
+        if not uploaded:
+            raise ValueError("No file uploaded")
+
+        filename = next(iter(uploaded))
+        content = uploaded[filename]
+        result = pd.read_excel(io.BytesIO(content), sheet_name=None, **kwargs)
+        container._set(result)
+        return container
+
+    else:
+        import ipywidgets as widgets
+        from IPython.display import display
+
+        uploader = widgets.FileUpload(accept=".xlsx,.xls", multiple=False)
+        output = widgets.Output()
+
+        def on_upload_change(change):
+            with output:
+                output.clear_output()
+                if uploader.value:
+                    # AIDEV-NOTE: ipywidgets 8.x returns tuple of dicts; 7.x returned dict-of-dicts
+                    file_info = uploader.value[0]
+                    content = file_info["content"]
+                    result = pd.read_excel(
+                        io.BytesIO(content), sheet_name=None, **kwargs
+                    )
+                    container._set(result)
+                    print(f"File loaded: {file_info['name']}")
+                    for name, df in result.items():
+                        print(f"\n--- Sheet: {name} ---")
+                        display(df.head())
+
+        uploader.observe(on_upload_change, names="value")
+        display(uploader, output)
+
+        return container
+
+
+def get_data_from_loader(
+    data: SpreadsheetResult,
+) -> tuple[list[Warehouse], list[Customer]]:
+    """Upload and read an Excel spreadsheet in a Jupyter notebook.
+    Returns a SpreadsheetResult containing a dict of {sheet_name: DataFrame}
+    """
+
+    warehouses = generate_data(data, "warehouses", Warehouse) or []
+    customers = generate_data(data, "customers", Customer) or []
+
+    return warehouses, customers
