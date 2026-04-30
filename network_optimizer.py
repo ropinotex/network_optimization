@@ -57,6 +57,7 @@ class NetworkOptimizer(ABC):
         force_uncapacitated: bool = False,
         force_allocations: list[tuple] | None = None,
         mutually_exclusive: list[tuple[int, int]] | None = None,
+        include_unit_handling_cost: bool = False,
         **kwargs,
     ):
         """Initialize the base network optimizer
@@ -91,6 +92,7 @@ class NetworkOptimizer(ABC):
         self.force_uncapacitated = force_uncapacitated
         self.force_allocations = force_allocations if force_allocations else []
         self.mutually_exclusive = mutually_exclusive if mutually_exclusive else []
+        self.include_unit_handling_cost = include_unit_handling_cost
 
         self.gapRel = kwargs.get("gapRel", 0.0)  # Default gap tolerance
         # Set up distance ranges
@@ -759,6 +761,7 @@ class PMedianOptimizer(NetworkOptimizer):
         force_single_sourcing: bool = True,
         unit_transport_cost: float = 0.001,
         ignore_fixed_cost: bool = True,
+        include_unit_handling_cost: bool = False,
         **kwargs,
     ):
         """Initialize P-Median optimizer
@@ -777,6 +780,7 @@ class PMedianOptimizer(NetworkOptimizer):
             distance=distance,
             force_uncapacitated=force_uncapacitated,
             force_single_sourcing=force_single_sourcing,
+            include_unit_handling_cost=include_unit_handling_cost,
             **kwargs,
         )
         self.num_warehouses = num_warehouses
@@ -785,6 +789,7 @@ class PMedianOptimizer(NetworkOptimizer):
             unit_transport_cost  # Default transport cost per unit per distance
         )
         self.ignore_fixed_cost = ignore_fixed_cost
+        self.include_unit_handling_cost = include_unit_handling_cost
 
     def validate(self) -> list[ValidationIssue]:
         issues = NetworkOptimizer.validate(self)
@@ -876,6 +881,18 @@ class PMedianOptimizer(NetworkOptimizer):
                 )
             else:
                 print("- Ignore warehouses' fixed costs")
+
+            if self.include_unit_handling_cost:
+                print("- Include unit handling cost in transportation cost")
+                obj_func += pl.lpSum(
+                    [
+                        self.customers[c].demand
+                        * self.assignment_vars[w, c]
+                        * self.warehouses[w].unit_handling_cost
+                        for w in self.warehouses_id
+                        for c in self.customers_id
+                    ]
+                )
         else:
             raise ValueError(
                 f"Unknown objective function: {self.objective_function}. Must be 'mindistance' or 'mincost'."
@@ -1228,6 +1245,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
         unit_transport_cost: float = 0.001,
         ignore_fixed_cost: bool = False,
         force_single_sourcing: bool = True,
+        include_unit_handling_cost: bool = False,
         **kwargs,
     ):
         """Initialize Uncapacitated FLP optimizer
@@ -1238,6 +1256,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
             distance: Distance matrix
             unit_transport_cost: Cost per unit per distance
             ignore_fixed_cost: Whether to ignore fixed costs in optimization
+            include_unit_handling_cost: Whether to include unit handling costs in optimization
             **kwargs: Additional arguments passed to parent class
         """
         # Force uncapacitated model
@@ -1248,6 +1267,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
             customers=customers,
             distance=distance,
             force_single_sourcing=force_single_sourcing,
+            include_unit_handling_cost=include_unit_handling_cost,
             **kwargs,
         )
         self.unit_transport_cost = unit_transport_cost
@@ -1288,6 +1308,17 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
                 ]
             )
 
+        # Add unit handling cost if included
+        if getattr(self, "include_unit_handling_cost", False):
+            total_cost += pl.lpSum(
+                [
+                    self.customers[c].demand
+                    * self.assignment_vars[w, c]
+                    * self.warehouses[w].unit_handling_cost
+                    for w in self.warehouses_id
+                    for c in self.customers_id
+                ]
+            )
         self.model.setObjective(total_cost)
 
     def print_solution_details(self):
@@ -1324,6 +1355,21 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
         else:
             print("Forced ignoring fixed cost")
 
+        if getattr(self, "include_unit_handling_cost", False):
+            unit_handling_cost = sum(
+                [
+                    self.customers[c].demand
+                    * self.assignment_vars[w, c].varValue
+                    * self.warehouses[w].unit_handling_cost
+                    for w in self.warehouses_id
+                    for c in self.customers_id
+                ]
+            )
+            print(f"- Unit handling cost: {round(unit_handling_cost, 0)}")
+        else:
+            print(
+                f" {Colors.RED}{Colors.BOLD} - Ignoring unit handling cost in optimization {Colors.RESET}"
+            )
         # Print common solution details
         super().print_solution_details()
 
@@ -1344,6 +1390,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
         unit_transport_cost: float = 0.001,
         ignore_fixed_cost: bool = False,
         force_single_sourcing: bool = True,
+        include_unit_handling_cost: bool = False,
         **kwargs,
     ):
         """Initialize Capacitated FLP optimizer
@@ -1354,6 +1401,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
             distance: Distance matrix
             unit_transport_cost: Cost per unit per distance
             ignore_fixed_cost: Whether to ignore fixed costs in optimization
+            include_unit_handling_cost: Whether to include unit handling costs in optimization
             **kwargs: Additional arguments passed to parent class
         """
         # Make sure force_uncapacitated is False for capacitated model
@@ -1366,6 +1414,7 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
             force_single_sourcing=force_single_sourcing,
+            include_unit_handling_cost=include_unit_handling_cost,
             **kwargs,
         )
 

@@ -15,12 +15,14 @@ import folium
 
 
 Warehouse = namedtuple(
-    "Warehouse", "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost"
+    "Warehouse",
+    "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost, unit_handling_cost",
 )
 
 
 Facility = namedtuple(
-    "Facility", "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost"
+    "Facility",
+    "name, city, state, zipcode, latitude, longitude, capacity, fixed_cost, unit_handling_cost",
 )
 
 Customer = namedtuple(
@@ -72,6 +74,14 @@ def import_data(data, datatype):
                 )
                 fixed_cost = 0.0
 
+            try:
+                unit_handling_cost = float(row[5])
+            except (ValueError, TypeError, IndexError):
+                print(
+                    f"The warehouse {row[0]} unit handling cost is not valid or missing: set to zero"
+                )
+                unit_handling_cost = 0.0
+
             imported_data[n] = Warehouse(
                 name=row[0],
                 city=row[0],
@@ -81,6 +91,7 @@ def import_data(data, datatype):
                 longitude=float(row[2]),
                 capacity=q,
                 fixed_cost=fixed_cost,
+                unit_handling_cost=unit_handling_cost,
             )
         elif datatype == "customer":
             imported_data[n] = Customer(
@@ -196,6 +207,7 @@ def set_capacity(warehouses: dict, w_id: int, capacity: int | float) -> None:
         longitude=warehouse.longitude,
         capacity=capacity,
         fixed_cost=warehouse.fixed_cost,
+        unit_handling_cost=warehouse.unit_handling_cost,
     )
 
 
@@ -230,6 +242,7 @@ def set_fixed_cost(warehouses: dict, w_id: int, fixed_cost: int | float) -> None
         longitude=warehouse.longitude,
         capacity=warehouse.capacity,
         fixed_cost=fixed_cost,
+        unit_handling_cost=warehouse.unit_handling_cost,
     )
 
 
@@ -499,6 +512,7 @@ def add_warehouse_from_data(
         longitude=longitude,
         capacity=capacity,
         fixed_cost=fixed_cost,
+        unit_handling_cost=0.0,
     )
 
     add_warehouse(warehouses=warehouses, new_warehouse=new_warehouse)
@@ -611,8 +625,10 @@ def generate_data(data, source: str, dest, column_map: dict = None) -> dict:
             else:
                 # Sensible defaults for unmapped fields
                 values[field] = (
-                    0.0 if field in ("capacity", "fixed_cost", "demand") else ""
+                    0.0
+                    if field
+                    in ("capacity", "fixed_cost", "demand", "unit_handling_cost")
+                    else ""
                 )
         result[n] = dest(**values)
-
     return result

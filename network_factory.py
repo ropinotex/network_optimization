@@ -28,6 +28,7 @@ def create_network_optimizer(
     force_uncapacitated: bool = False,
     force_allocations: list = None,
     ignore_fixed_cost: bool = False,
+    include_unit_handling_cost: bool = False,
     unit_transport_cost: float = 0.001,
     distance_ranges: list = None,
     mutually_exclusive: list = None,
@@ -78,6 +79,7 @@ def create_network_optimizer(
         "force_allocations": force_allocations,
         "mutually_exclusive": mutually_exclusive,
         "distance_ranges": distance_ranges,
+        # "include_unit_handling_cost": include_unit_handling_cost,
     }
     # print("=====> KWARGS <=====")
     # print(kwargs)
@@ -101,6 +103,7 @@ def create_network_optimizer(
             unit_transport_cost=unit_transport_cost,
             force_uncapacitated=force_uncapacitated,
             force_single_sourcing=force_single_sourcing,
+            include_unit_handling_cost=include_unit_handling_cost,
             **common_params,
             **kwargs,
         )
@@ -125,6 +128,7 @@ def create_network_optimizer(
             ignore_fixed_cost=ignore_fixed_cost,
             force_uncapacitated=force_uncapacitated,
             assign_uncovered_to_nearest=assign_uncovered_to_nearest,
+            include_unit_handling_cost=include_unit_handling_cost,
             **common_params,
             **kwargs,
         )
@@ -136,6 +140,7 @@ def create_network_optimizer(
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
             force_single_sourcing=force_single_sourcing,
+            include_unit_handling_cost=include_unit_handling_cost,
             **common_params,
             **kwargs,
         )
@@ -147,6 +152,7 @@ def create_network_optimizer(
             unit_transport_cost=unit_transport_cost,
             ignore_fixed_cost=ignore_fixed_cost,
             force_single_sourcing=force_single_sourcing,
+            include_unit_handling_cost=include_unit_handling_cost,
             **common_params,
             **kwargs,
         )

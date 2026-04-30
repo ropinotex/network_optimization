@@ -250,6 +250,12 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
         style=form_style,
     )
 
+    include_unit_handling_cost = widgets.Checkbox(
+        description="Include unit handling cost",
+        layout=form_layout,
+        style=form_style,
+    )
+
     force_open = widgets.Text(
         description="Force open",
         placeholder="[1, 4]",
@@ -462,6 +468,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                     "force_single_sourcing": force_single_sourcing.value,
                     "force_uncapacitated": force_uncapacitated.value,
                     "ignore_fixed_cost": ignore_fixed_cost.value,
+                    "include_unit_handling_cost": include_unit_handling_cost.value,
                     "force_open": parse(force_open.value) or [],
                     "force_closed": parse(force_closed.value) or [],
                     "force_allocations": parse(force_allocations.value) or [],
@@ -535,6 +542,11 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                 )
 
             try:
+                print("Running optimization...  This may take a moment...")
+                # print(
+                #     f"Model parameters: {params.get('include_unit_handling_cost', False)=}"
+                # )
+
                 result = netopt(
                     num_warehouses=num_wh.value,
                     factories=None,
@@ -545,6 +557,9 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                     objective=obj,
                     objective_function=params.get("objective_function", "mindistance"),
                     unit_transport_cost=params.get("unit_transport_cost", 0.1),
+                    include_unit_handling_cost=params.get(
+                        "include_unit_handling_cost", False
+                    ),
                     mutually_exclusive=params.get("mutually_exclusive", []),
                     plot=plot.value,
                     plot_size=params.get("plot_size", (8, 12)),
@@ -580,6 +595,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
                     result,
                     warehouses=active_warehouses,
                     unit_transport_cost=params.get("unit_transport_cost", 0),
+                    # include_unit_handling_cost=params.get("include_unit_handling_cost", False),
                 )
                 show_assignments(result)
 
@@ -604,6 +620,7 @@ def netopt_ui(warehouses: dict, customers: dict, distance: dict | None = None):
             force_uncapacitated,
             capacity_warning,
             ignore_fixed_cost,
+            include_unit_handling_cost,
             force_open,
             force_closed,
             force_allocations,
@@ -740,6 +757,7 @@ def edit_warehouse_ui(warehouses: dict, warehouse_id: int) -> dict:
                     longitude=old_data.longitude,
                     capacity=parse(capacity.value) or old_data.capacity,
                     fixed_cost=parse(fixed_cost.value) or old_data.fixed_cost,
+                    unit_handling_cost=getattr(old_data, "unit_handling_cost", 0.0),
                 )
 
                 print(f"Warehouse {warehouse_id} updated successfully.")
@@ -845,6 +863,14 @@ def add_warehouse_ui(warehouses: dict) -> dict:
         style=form_style,
     )
 
+    unit_handling_cost = widgets.Text(
+        description="Unit handling cost",
+        value="0",
+        placeholder="Insert the unit handling cost",
+        layout=form_layout,
+        style=form_style,
+    )
+
     use_geocoding = widgets.Checkbox(
         description="Use geocoding to find coordinates",
         value=False,
@@ -872,6 +898,7 @@ def add_warehouse_ui(warehouses: dict) -> dict:
             longitude,
             capacity,
             fixed_cost,
+            unit_handling_cost,
             use_geocoding,
             button,
             output,
@@ -950,6 +977,7 @@ def add_warehouse_ui(warehouses: dict) -> dict:
                     longitude=lon,
                     capacity=parse(capacity.value),
                     fixed_cost=parse(fixed_cost.value) or 0,
+                    unit_handling_cost=parse(unit_handling_cost.value) or 0.0,
                 )
 
                 # Add to warehouses dictionary
@@ -961,6 +989,7 @@ def add_warehouse_ui(warehouses: dict) -> dict:
                 print(f"Location: {city.value}, {state.value} ({lat}, {lon})")
                 print(f"Capacity: {parse(capacity.value) or 'Unlimited'}")
                 print(f"Fixed cost: {parse(fixed_cost.value) or 1000}")
+                print(f"Unit handling cost: {parse(unit_handling_cost.value) or 0.0}")
 
                 # Add a clear button
                 close_button = widgets.Button(
