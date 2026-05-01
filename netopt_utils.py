@@ -524,14 +524,12 @@ class SpreadsheetResult:
 def load_data_from_spreadsheet(**kwargs):
     """Upload and read an Excel spreadsheet in a Jupyter notebook.
 
-    Returns a SpreadsheetResult containing a dict of {sheet_name: DataFrame}
-    for all sheets. After uploading a file, access the data
-    via ``.result`` in a subsequent cell::
+    In Colab, upload is synchronous and the function returns
+    ``(warehouses, customers)`` immediately as two dicts.
 
-        loader = get_data_from_spreadsheet()
-        # ... upload the file ...
-        sheets = loader.result          # dict of DataFrames
-        df = loader.result["Sheet1"]    # single sheet
+    In local Jupyter (ipywidgets), upload is asynchronous. The function still
+    returns ``(warehouses, customers)`` immediately as mutable dicts that are
+    populated by the upload callback once a file is selected.
     """
     container = SpreadsheetResult()
 
@@ -546,12 +544,14 @@ def load_data_from_spreadsheet(**kwargs):
         content = uploaded[filename]
         result = pd.read_excel(io.BytesIO(content), sheet_name=None, **kwargs)
         container._set(result)
-        return container
+        return get_data_from_loader(container)
 
     else:
         import ipywidgets as widgets
         from IPython.display import display
 
+        warehouses: dict[int, Warehouse] = {}
+        customers: dict[int, Customer] = {}
         uploader = widgets.FileUpload(accept=".xlsx,.xls", multiple=False)
         output = widgets.Output()
 
@@ -559,32 +559,53 @@ def load_data_from_spreadsheet(**kwargs):
             with output:
                 output.clear_output()
                 if uploader.value:
-                    # AIDEV-NOTE: ipywidgets 8.x returns tuple of dicts; 7.x returned dict-of-dicts
-                    file_info = uploader.value[0]
+                    # AIDEV-NOTE: support both ipywidgets 7.x (dict) and 8.x (tuple)
+                    if isinstance(uploader.value, dict):
+                        file_info = next(iter(uploader.value.values()))
+                    else:
+                        file_info = uploader.value[0]
+
                     content = file_info["content"]
-                    result = pd.read_excel(
-                        io.BytesIO(content), sheet_name=None, **kwargs
-                    )
-                    container._set(result)
-                    print(f"File loaded: {file_info['name']}")
-                    for name, df in result.items():
-                        print(f"\n--- Sheet: {name} ---")
-                        display(df.head())
+                    filename = file_info.get("name", "uploaded_file")
+
+                    try:
+                        result = pd.read_excel(
+                            io.BytesIO(content), sheet_name=None, **kwargs
+                        )
+                        container._set(result)
+
+                        loaded_warehouses, loaded_customers = get_data_from_loader(
+                            container
+                        )
+                        warehouses.clear()
+                        warehouses.update(loaded_warehouses)
+                        customers.clear()
+                        customers.update(loaded_customers)
+
+                        print(
+                            f"File loaded: {filename}"
+                            f"\nLoaded warehouses: {len(warehouses)}"
+                            f"\nLoaded customers: {len(customers)}"
+                        )
+                        for name, df in result.items():
+                            print(f"\n--- Sheet: {name} ---")
+                            display(df.head())
+                    except Exception as exc:
+                        print(f"Error while reading spreadsheet: {exc}")
 
         uploader.observe(on_upload_change, names="value")
         display(uploader, output)
-
-        return container
+        return warehouses, customers
 
 
 def get_data_from_loader(
     data: SpreadsheetResult,
-) -> tuple[list[Warehouse], list[Customer]]:
+) -> tuple[dict[int, Warehouse], dict[int, Customer]]:
     """Upload and read an Excel spreadsheet in a Jupyter notebook.
     Returns a SpreadsheetResult containing a dict of {sheet_name: DataFrame}
     """
 
-    warehouses = generate_data(data, "warehouses", Warehouse) or []
-    customers = generate_data(data, "customers", Customer) or []
+    warehouses = generate_data(data, "warehouses", Warehouse) or {}
+    customers = generate_data(data, "customers", Customer) or {}
 
     return warehouses, customers
