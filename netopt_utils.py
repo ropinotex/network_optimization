@@ -543,8 +543,16 @@ def load_data_from_spreadsheet(**kwargs):
         filename = next(iter(uploaded))
         content = uploaded[filename]
         result = pd.read_excel(io.BytesIO(content), sheet_name=None, **kwargs)
-        container._set(result)
-        return get_data_from_loader(container)
+
+        # AIDEV-NOTE: Colab upload is synchronous; return parsed entities directly.
+        warehouses = generate_data(result, "warehouses", Warehouse) or {}
+        customers = generate_data(result, "customers", Customer) or {}
+        print(
+            f"File loaded: {filename}"
+            f"\nLoaded warehouses: {len(warehouses)}"
+            f"\nLoaded customers: {len(customers)}"
+        )
+        return warehouses, customers
 
     else:
         import ipywidgets as widgets
