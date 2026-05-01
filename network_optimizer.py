@@ -872,7 +872,9 @@ class PMedianOptimizer(NetworkOptimizer):
             )
             if not self.ignore_fixed_cost:
                 # Include fixed costs if not explicitly ignored
-                print("- Include warehouses' fixed costs")
+                print(
+                    f"{Colors.GREEN}{Colors.BOLD}- Include warehouses fixed costs{Colors.RESET}"
+                )
                 obj_func += pl.lpSum(
                     [
                         self.warehouses[w].fixed_cost * self.facility_status_vars[w]
@@ -880,10 +882,14 @@ class PMedianOptimizer(NetworkOptimizer):
                     ]
                 )
             else:
-                print("- Ignore warehouses' fixed costs")
+                print(
+                    f"{Colors.RED}{Colors.BOLD}- Ignore warehouses fixed costs{Colors.RESET}"
+                )
 
             if self.include_unit_handling_cost:
-                print("- Include unit handling cost in transportation cost")
+                print(
+                    f"{Colors.GREEN}{Colors.BOLD}- Include unit handling cost in transportation cost{Colors.RESET} "
+                )
                 obj_func += pl.lpSum(
                     [
                         self.customers[c].demand
@@ -912,14 +918,58 @@ class PMedianOptimizer(NetworkOptimizer):
                 f"Average weighted distance: {int(self.solution['objective_value'])} km"
             )
         elif self.objective_function == "mincost":
-            if self.ignore_fixed_cost:
-                print(
-                    f"Minimum total cost (transportation only): {int(self.solution['objective_value'])}"
+            # Calculate and print cost breakdown
+            transport_cost = sum(
+                [
+                    self.unit_transport_cost
+                    * self.customers[c].demand
+                    * self.distance[w, c]
+                    * self.assignment_vars[w, c].varValue
+                    for w in self.warehouses_id
+                    for c in self.customers_id
+                ]
+            )
+            print(f"- Transportation cost: {round(transport_cost, 3)}")
+
+            if not self.ignore_fixed_cost:
+                fixed_cost = sum(
+                    [
+                        self.warehouses[w].fixed_cost
+                        * self.facility_status_vars[w].varValue
+                        for w in self.warehouses_id
+                    ]
                 )
+                print(f"- Yearly fixed cost: {round(fixed_cost, 3)}")
             else:
                 print(
-                    f"Minimum total cost (fixed + transportation): {int(self.solution['objective_value'])}"
+                    f"{Colors.RED}{Colors.BOLD}- Forced ignoring fixed cost {Colors.RESET}"
                 )
+
+            if getattr(self, "include_unit_handling_cost", False):
+                unit_handling_cost = sum(
+                    [
+                        self.customers[c].demand
+                        * self.assignment_vars[w, c].varValue
+                        * self.warehouses[w].unit_handling_cost
+                        for w in self.warehouses_id
+                        for c in self.customers_id
+                    ]
+                )
+                print(f"- Unit handling cost: {round(unit_handling_cost, 3)}")
+            else:
+                print(
+                    f"{Colors.RED}{Colors.BOLD}- Ignoring unit handling cost in optimization {Colors.RESET}"
+                )
+
+            print(f"Minimum total cost: {round(self.solution['objective_value'], 3)}")
+            # if self.ignore_fixed_cost:
+            #     print(
+            #         f"Minimum total cost (transportation only): {int(self.solution['objective_value'])}"
+            #     )
+            # else:
+            #     print(
+            #         f"Minimum total cost (fixed + transportation): {int(self.solution['objective_value'])}"
+            #     )
 
         # Print common solution details
         super().print_solution_details()
@@ -1328,8 +1378,6 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
             return
 
         print("Uncapacitated FLP optimization results:")
-        print(f"Total cost: {round(self.solution['objective_value'], 0)}")
-
         # Calculate and print cost breakdown
         transport_cost = sum(
             [
@@ -1341,7 +1389,7 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
                 for c in self.customers_id
             ]
         )
-        print(f"- Transportation cost: {round(transport_cost, 0)}")
+        print(f"- Transportation cost: {round(transport_cost, 3)}")
 
         if not self.ignore_fixed_cost:
             fixed_cost = sum(
@@ -1351,9 +1399,11 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
                     for w in self.warehouses_id
                 ]
             )
-            print(f"- Yearly fixed cost: {round(fixed_cost, 0)}")
+            print(f"- Yearly fixed cost: {round(fixed_cost, 3)}")
         else:
-            print("Forced ignoring fixed cost")
+            print(
+                f"{Colors.RED}{Colors.BOLD}- Forced ignoring fixed cost {Colors.RESET}"
+            )
 
         if getattr(self, "include_unit_handling_cost", False):
             unit_handling_cost = sum(
@@ -1365,11 +1415,14 @@ class UncapacitatedFLPOptimizer(NetworkOptimizer):
                     for c in self.customers_id
                 ]
             )
-            print(f"- Unit handling cost: {round(unit_handling_cost, 0)}")
+            print(f"- Unit handling cost: {round(unit_handling_cost, 3)}")
         else:
             print(
-                f" {Colors.RED}{Colors.BOLD} - Ignoring unit handling cost in optimization {Colors.RESET}"
+                f"{Colors.RED}{Colors.BOLD}- Ignoring unit handling cost in optimization {Colors.RESET}"
             )
+
+        print(f"Total cost: {round(self.solution['objective_value'], 3)}")
+
         # Print common solution details
         super().print_solution_details()
 
@@ -1490,7 +1543,6 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
             return
 
         print("Capacitated FLP optimization results:")
-        print(f"Total cost: {round(self.solution['objective_value'], 0)}")
 
         # Calculate and print cost breakdown
         transport_cost = sum(
@@ -1513,9 +1565,11 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
                     for w in self.warehouses_id
                 ]
             )
-            print(f"- Yearly fixed cost: {round(fixed_cost, 0)}")
+            print(f"- Yearly fixed cost: {round(fixed_cost, 3)} ")
         else:
-            print("Forced ignoring fixed cost")
+            print(
+                f"{Colors.RED}{Colors.BOLD}- Forced ignoring fixed cost {Colors.RESET}"
+            )
 
         # Check capacity utilization
         # print("\nWarehouse capacity utilization:")
@@ -1533,4 +1587,6 @@ class CapacitatedFLPOptimizer(UncapacitatedFLPOptimizer):
         #         )
 
         # Print common solution details from NetworkOptimizer (skip UncapacitatedFLP)
+        print(f"Total cost: {round(self.solution['objective_value'], 3)}")
+
         NetworkOptimizer.print_solution_details(self)
