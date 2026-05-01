@@ -129,6 +129,7 @@ def create_network_optimizer(
             force_uncapacitated=force_uncapacitated,
             assign_uncovered_to_nearest=assign_uncovered_to_nearest,
             include_unit_handling_cost=include_unit_handling_cost,
+            unit_transport_cost=unit_transport_cost,
             **common_params,
             **kwargs,
         )
@@ -168,6 +169,10 @@ def create_network_optimizer(
         optimizer = TotalCoverOptimizer(
             objective=objective,
             coverage_distance=coverage_distance,
+            ignore_fixed_cost=ignore_fixed_cost,
+            force_uncapacitated=force_uncapacitated,
+            unit_transport_cost=unit_transport_cost,
+            include_unit_handling_cost=include_unit_handling_cost,
             **common_params,
             **kwargs,
         )
